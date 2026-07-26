@@ -1,0 +1,19 @@
+Package.swift
+  s_14177733452184::t_c05ece3e4269ed 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5fdf0e270af8d5fd1ada40195ae36134dcc8ace7",
+  "prompts": {},
+  "sessions": {
+    "s_14177733452184": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_065b6e15affeQtc3V0VKiaQzy3",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    }
+  }
+}
