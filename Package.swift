@@ -9,16 +9,20 @@ let package = Package(
         .macOS(.v14),
     ],
     products: [
-        // An xtool project should contain exactly one library product,
-        // representing the main app.
         .library(
             name: "bibi",
             targets: ["bibi"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "6.29.3"),
+    ],
     targets: [
         .target(
-            name: "bibi"
+            name: "bibi",
+            dependencies: [
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ]
         ),
     ]
 )

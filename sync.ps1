@@ -47,7 +47,8 @@ $Excludes = @(
     "*.ipa",
     "*.app",
     "Packages",
-    "xtool"
+    "xtool",
+    "doc"
 )
 
 # ============================================================
@@ -145,7 +146,7 @@ function Sync-ToWsl {
 # ============================================================
 try {
     Write-Host "╔══════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║       bibi-ios 项目同步工具             ║" -ForegroundColor Cyan
+    Write-Host "║       bibi-ios 项目同步工具              ║" -ForegroundColor Cyan
     Write-Host "║       WSL ↔ Windows 双向同步             ║" -ForegroundColor Cyan
     Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor Cyan
 
