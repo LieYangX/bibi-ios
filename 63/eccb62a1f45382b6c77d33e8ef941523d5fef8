@@ -1,0 +1,19 @@
+AGENTS.md
+  s_58ab5c033327eb::t_4df87f7a53aaa4 1-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "63eccb62a1f45382b6c77d33e8ef941523d5fef8",
+  "prompts": {},
+  "sessions": {
+    "s_58ab5c033327eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_04a4ab4aeffesChCXahaSl4eHk",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    }
+  }
+}
