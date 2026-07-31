@@ -42,6 +42,35 @@ final class DatabaseManager {
         guard let q = dbQueue else { return }
         try q.write { db in try db.execute(sql: sql, arguments: args) }
     }
+
+    /**
+     * 在同一事务中删除本地用户及其全部对话数据。
+     *
+     * @param id 本地用户标识
+     * @throws 数据库写入异常
+     */
+    func deleteLocalUserData(id: String) throws {
+        guard let q = dbQueue else { return }
+        try q.write { db in
+            try db.execute(
+                sql: """
+                    DELETE FROM chat_message_record
+                    WHERE conversation_id IN (
+                        SELECT id FROM conversation WHERE owner_id = ?
+                    )
+                    """,
+                arguments: [id]
+            )
+            try db.execute(
+                sql: "DELETE FROM conversation WHERE owner_id = ?",
+                arguments: [id]
+            )
+            try db.execute(
+                sql: "DELETE FROM local_user WHERE id = ?",
+                arguments: [id]
+            )
+        }
+    }
 }
 
 struct LocalUserRecord: Codable, FetchableRecord, PersistableRecord {

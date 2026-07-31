@@ -11,6 +11,9 @@ import UIKit
 @MainActor
 @Observable
 final class ConnectionManager {
+    /// 单次搜索持续时间。
+    private static let searchDuration: Duration = .seconds(30)
+
     /// 当前连接状态
     private(set) var state: ConnectionState = .searching
 
@@ -32,6 +35,9 @@ final class ConnectionManager {
     /// 重连任务
     private var reconnectTask: Task<Void, Never>?
 
+    /// 搜索超时任务。
+    private var searchTimeoutTask: Task<Void, Never>?
+
     /// 最后连接的 PC 设备 ID（用于自动重连）
     private var lastConnectedDeviceId: String?
 
@@ -50,15 +56,40 @@ final class ConnectionManager {
      * 开始搜索 PC 设备
      */
     func startSearching() {
+        cancelSearch()
         state = .searching
         discoveredPCs.removeAll()
         bonjourDiscovery.start()
+
+        searchTimeoutTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: Self.searchDuration)
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled else { return }
+            self?.stopSearching()
+        }
     }
 
     /**
      * 停止搜索 PC 设备
      */
     func stopSearching() {
+        cancelSearch()
+
+        if state == .searching {
+            state = discoveredPCs.isEmpty ? .disconnected : .found
+        }
+    }
+
+    /**
+     * 取消当前搜索和超时计时。
+     */
+    private func cancelSearch() {
+        searchTimeoutTask?.cancel()
+        searchTimeoutTask = nil
         bonjourDiscovery.stop()
     }
 
@@ -121,6 +152,7 @@ final class ConnectionManager {
         authToken = token
         connectedPC = pc
         lastConnectedDeviceId = pc.id
+        cancelSearch()
         state = .connected
 
         KeychainHelper.shared.savePairingToken(token)
@@ -149,6 +181,7 @@ final class ConnectionManager {
         if await ping() {
             connectedPC = pc
             lastConnectedDeviceId = pc.id
+            cancelSearch()
             state = .connected
             startHealthCheck()
         } else {
@@ -206,10 +239,19 @@ final class ConnectionManager {
      * 处理断线
      */
     private func handleDisconnect() {
+        let deviceName = connectedPC?.name ?? "unknown"
         state = .disconnected
         connectedPC = nil
         stopHealthCheck()
         startReconnect()
+        Task {
+            await AppLogger.shared.log(
+                .warning,
+                category: "connection",
+                message: "电脑连接中断，已开始自动重连",
+                metadata: ["device_name": deviceName]
+            )
+        }
     }
 
     /**

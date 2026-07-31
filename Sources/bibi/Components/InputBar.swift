@@ -1,10 +1,9 @@
 import SwiftUI
 
 /**
- * 输入工具栏
+ * 对话输入工具栏。
  *
- * 文本输入框（自动增长 1-5 行）、语音按钮、发送/停止按钮。
- * 使用 .glassEffect()（导航层材质）。
+ * 输入工具栏属于导航控制层，使用单层 Liquid Glass 承载文本、语音与发送动作。
  *
  * @author xiangwei
  */
@@ -15,50 +14,80 @@ struct InputBar: View {
     let onStop: () -> Void
     let onVoice: () -> Void
 
-    @State private var textHeight: CGFloat = 36
+    @FocusState private var isFocused: Bool
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            // 语音按钮
-            Button(action: onVoice) {
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(.brandGold)
-                    .frame(width: 36, height: 36)
-            }
-            .disabled(isProcessing)
-
-            // 文本输入
-            TextField("给小笔发消息...", text: $text, axis: .vertical)
-                .font(.bibiBody)
-                .lineLimit(1...5)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
+        GlassEffectContainer(spacing: 12) {
+            HStack(alignment: .center, spacing: 8) {
+                Button(action: onVoice) {
+                    Label("语音输入", systemImage: "waveform")
+                        .labelStyle(.iconOnly)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 36)
+                }
+                .buttonStyle(.plain)
                 .disabled(isProcessing)
 
-            // 发送 / 停止
-            if isProcessing {
-                Button(action: onStop) {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.white)
+                TextField("向小笔提问", text: $text, axis: .vertical)
+                    .font(.bibiBody)
+                    .lineLimit(1...5)
+                    .frame(minHeight: 36, alignment: .center)
+                    .focused($isFocused)
+                    .submitLabel(.send)
+                    .disabled(isProcessing)
+                    .onSubmit {
+                        if canSend {
+                            onSend()
+                        }
+                    }
+
+                Button(action: isProcessing ? onStop : onSend) {
+                    Label(actionLabel, systemImage: actionIcon)
+                        .labelStyle(.iconOnly)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(actionForeground)
                         .frame(width: 36, height: 36)
-                        .background(Color.errorRed)
-                        .clipShape(Circle())
+                        .background(actionBackground, in: Circle())
                 }
-            } else {
-                Button(action: onSend) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(text.trimmingCharacters(in: .whitespaces).isEmpty ? .gray.opacity(0.3) : .brandGold)
-                }
-                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                .buttonStyle(.plain)
+                .disabled(!isProcessing && !canSend)
+                .contentTransition(.symbolEffect(.replace))
             }
+            .padding(.leading, 8)
+            .padding(.trailing, 7)
+            .padding(.vertical, 7)
+            .glassEffect(.regular, in: .rect(cornerRadius: 25))
+            .shadow(color: Color.black.opacity(0.08), radius: 14, y: 6)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+    }
+
+    private var canSend: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var actionLabel: String {
+        isProcessing ? "停止生成" : "发送"
+    }
+
+    private var actionIcon: String {
+        isProcessing ? "stop.fill" : "arrow.up"
+    }
+
+    private var actionForeground: Color {
+        if isProcessing || canSend {
+            return .black.opacity(0.78)
+        }
+        return .tertiaryText
+    }
+
+    private var actionBackground: Color {
+        if isProcessing {
+            return .errorRed
+        }
+        return canSend ? .brandGold : Color.secondary.opacity(0.12)
     }
 }

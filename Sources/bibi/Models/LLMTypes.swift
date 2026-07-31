@@ -12,7 +12,7 @@ enum LLMStreamEvent {
     case chunk(String)
 
     /// 工具调用分片
-    case toolCallDelta(index: Int, name: String?, arguments: String?)
+    case toolCallDelta(index: Int, id: String?, name: String?, arguments: String?)
 
     /// 流式结束信号
     case finish(reason: String?)
@@ -168,6 +168,9 @@ struct StreamToolCall: Decodable {
     /// 工具调用索引
     let index: Int
 
+    /// 工具调用标识
+    let id: String?
+
     /// 函数信息
     let function: StreamToolFunction?
 }
@@ -194,10 +197,20 @@ enum LLMError: Error, LocalizedError {
     /// API 调用失败
     case apiError(String)
 
+    /// 工具调用数据不完整
+    case invalidToolCall
+
+    /// 工具调用轮次超过限制
+    case toolCallLimitExceeded
+
     var errorDescription: String? {
         switch self {
         case .apiError(let message):
             return "LLM 调用失败: \(message)"
+        case .invalidToolCall:
+            return "智能体返回了不完整的工具调用，请重试"
+        case .toolCallLimitExceeded:
+            return "工具连续调用次数过多，已停止本次请求"
         }
     }
 }

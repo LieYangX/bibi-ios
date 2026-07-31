@@ -1,91 +1,38 @@
 import SwiftUI
 
 /**
- * 空对话英雄区
+ * 空对话引导区。
  *
- * 首次启动或无消息时展示：品牌标志、问候语、模式选择按钮、推荐问题。
+ * 仅展示品牌标识和当前用户问候语。
  *
  * @author xiangwei
  */
 struct EmptyHeroView: View {
     let userName: String
-    let pcUserName: String?
-    let onQuickMode: () -> Void
-    let onExpertMode: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                Spacer().frame(height: 40)
+        VStack(spacing: 18) {
+            Spacer(minLength: 32)
 
-                // Logo
-                Image(systemName: "pencil.and.list.clipboard")
-                    .font(.system(size: 48))
-                    .foregroundColor(.brandGold)
+            brandMark
 
-                // 问候
-                VStack(spacing: 8) {
-                    Text("你好，\(userName)")
-                        .font(.bibiLargeTitle)
-                        .foregroundColor(.primary)
+            Text("你好，\(userName)")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
 
-                    if let pcUser = pcUserName {
-                        Text("我是小笔，已连接到 \(pcUser) 的 PC")
-                            .font(.bibiBody)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("我是小笔，当前未连接到 PC 记账服务")
-                            .font(.bibiBody)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // 模式按钮
-                HStack(spacing: 16) {
-                    Button("快速", action: onQuickMode)
-                        .buttonStyle(.glassProminent)
-
-                    Button("专家", action: onExpertMode)
-                        .buttonStyle(.glass)
-                }
-
-                // 推荐问题
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("试试这样问我：")
-                        .font(.bibiCaption)
-                        .foregroundColor(.secondary)
-
-                    SuggestionChip(text: "我这个月花了多少钱？")
-                    SuggestionChip(text: "我的总资产有多少？")
-                    SuggestionChip(text: "上个月支出最多的是哪类？")
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 24)
+            Spacer(minLength: 32)
         }
+        .padding(.horizontal, 24)
     }
-}
 
-/**
- * 推荐问题标签
- */
-private struct SuggestionChip: View {
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "sparkle")
-                .font(.caption2)
-                .foregroundColor(.brandGold)
-
-            Text(text)
-                .font(.bibiCaption)
-                .foregroundColor(.primary)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.brandGoldLight)
-        .clipShape(Capsule())
+    private var brandMark: some View {
+        Image("AppIcon")
+            .resizable()
+            .scaledToFill()
+            .frame(width: 84, height: 84)
+            .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .shadow(color: .black.opacity(0.12), radius: 10, y: 5)
+            .accessibilityHidden(true)
     }
 }

@@ -30,12 +30,17 @@ struct ToolCallAccumulator {
      * 追加一个分片
      *
      * @param index 工具调用索引
+     * @param id 工具调用标识（可能为空）
      * @param name 工具名（可能为空）
      * @param arguments 参数 JSON 片段（可能为空）
      */
-    mutating func append(index: Int, name: String?, arguments: String?) {
+    mutating func append(index: Int, id: String?, name: String?, arguments: String?) {
         if fragments[index] == nil {
             fragments[index] = ToolCallFragment()
+        }
+
+        if let id {
+            fragments[index]?.id = id
         }
 
         if let name = name {

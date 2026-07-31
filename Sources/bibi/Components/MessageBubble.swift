@@ -1,75 +1,157 @@
 import SwiftUI
 
 /**
- * 消息气泡
+ * 对话消息视图。
  *
- * 三种角色三种样式：
- * - 用户消息：右对齐，暖金纯色背景
- * - 助手消息：左对齐，.thinMaterial 背景
- * - 工具消息：左对齐，.regularMaterial + 边框
+ * 用户消息使用紧凑气泡，助手消息使用无头像内容卡片，工具结果作为辅助状态展示。
  *
  * @author xiangwei
  */
 struct MessageBubble: View {
     let message: ChatMessage
+    let isLastInRun: Bool
     let onCopy: () -> Void
 
+    @State private var isAppeared = false
+
+    init(message: ChatMessage, isLastInRun: Bool = true, onCopy: @escaping () -> Void) {
+        self.message = message
+        self.isLastInRun = isLastInRun
+        self.onCopy = onCopy
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            if message.role == .user {
-                Spacer(minLength: 60)
+        Group {
+            switch message.role {
+            case .toolResult:
+                toolResult
+            case .system:
+                systemMessage
+            case .user:
+                userMessage
+            default:
+                assistantMessage
             }
+        }
+        .opacity(isAppeared ? 1 : 0)
+        .offset(y: isAppeared ? 0 : 8)
+        .onAppear {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) {
+                isAppeared = true
+            }
+        }
+    }
 
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-                // 消息内容
-                Text(message.text)
-                    .font(.bibiBody)
-                    .foregroundColor(message.role == .user ? .userBubbleText : .primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(backgroundView)
-                    .contextMenu {
-                        Button(action: onCopy) {
-                            Label("复制", systemImage: "doc.on.doc")
-                        }
-                    }
+    private var userMessage: some View {
+        HStack(alignment: .bottom) {
+            Spacer(minLength: 72)
 
-                // 工具摘要
-                if let summary = message.toolSummary {
-                    Text(summary)
-                        .font(.bibiCaption)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 16)
+            Text(renderedText)
+                .font(.bibiBody)
+                .foregroundStyle(Color.userBubbleText)
+                .lineSpacing(3)
+                .textSelection(.enabled)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .frame(maxWidth: 330, alignment: .leading)
+                .background {
+                    userBubbleShape.fill(Color.userBubbleBackground)
                 }
-            }
-
-            if message.role == .assistant || message.role == .toolCall || message.role == .toolResult {
-                Spacer(minLength: 60)
-            }
+                .contextMenu {
+                    copyButton
+                }
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 16)
-        .padding(.vertical, 4)
+        .padding(.vertical, isLastInRun ? 5 : 2)
     }
 
-    @ViewBuilder
-    private var backgroundView: some View {
-        switch message.role {
-        case .user:
-            Color.userBubbleBackground
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-        case .assistant:
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.thinMaterial)
-        case .toolCall, .toolResult:
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.gray.opacity(0.3), lineWidth: 0.5)
+    private var assistantMessage: some View {
+        HStack(alignment: .top) {
+            Text(renderedText)
+                .font(.bibiAssistant)
+                .foregroundStyle(.primary)
+                .lineSpacing(4)
+                .textSelection(.enabled)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .frame(maxWidth: 560, alignment: .leading)
+                .background(
+                    Color.assistantBubbleBackground,
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                 )
-        case .system:
-            Color.secondary.opacity(0.1)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.hairline.opacity(0.65), lineWidth: 0.5)
+                }
+                .contextMenu {
+                    copyButton
+                }
+
+            Spacer(minLength: 24)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, isLastInRun ? 6 : 3)
+    }
+
+    private var toolResult: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: toolResultSucceeded ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(toolResultSucceeded ? Color.secondary : Color.errorRed)
+
+            Text(message.toolSummary ?? message.text)
+                .font(.caption2)
+                .foregroundStyle(toolResultSucceeded ? .tertiary : .secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 2)
+    }
+
+    private var systemMessage: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(Color.errorRed)
+
+            Text(renderedText)
+                .font(.bibiCaption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(Color.errorRed.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 5)
+    }
+
+    private var userBubbleShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: 19,
+            bottomLeadingRadius: 19,
+            bottomTrailingRadius: isLastInRun ? 6 : 19,
+            topTrailingRadius: 19,
+            style: .continuous
+        )
+    }
+
+    private var renderedText: AttributedString {
+        (try? AttributedString(markdown: message.text)) ?? AttributedString(message.text)
+    }
+
+    private var copyButton: some View {
+        Button(action: onCopy) {
+            Label("复制", systemImage: "doc.on.doc")
         }
     }
+
+    private var toolResultSucceeded: Bool {
+        !(message.toolSummary ?? "").contains("失败")
+    }
+
 }

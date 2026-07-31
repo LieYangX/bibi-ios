@@ -30,7 +30,8 @@ final class PcToolService {
      */
     func loadTools() async throws {
         let request = try connection.authenticatedRequest(path: "api/v1/tools")
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, urlResponse) = try await URLSession.shared.data(for: request)
+        try validate(response: urlResponse, data: data, operation: "加载工具列表")
         let response = try JSONDecoder().decode(ToolListResponse.self, from: data)
 
         guard response.success, let tools = response.data else {
@@ -45,9 +46,14 @@ final class PcToolService {
      *
      * @param toolName 工具名
      * @param args 参数字典
+     * @param traceId 调用链标识
      * @returns 工具执行结果
      */
-    func execute(toolName: String, args: [String: Any]) async throws -> PcToolResult {
+    func execute(
+        toolName: String,
+        args: [String: Any],
+        traceId: String? = nil
+    ) async throws -> PcToolResult {
         var request = try connection.authenticatedRequest(
             path: "api/v1/tools/\(toolName)",
             method: "POST"
@@ -55,10 +61,20 @@ final class PcToolService {
         request.httpBody = try JSONSerialization.data(withJSONObject: args)
         request.timeoutInterval = 30
 
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let result = try JSONDecoder().decode(PcToolResult.self, from: data)
-
-        return result
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try validate(response: response, data: data, operation: "执行工具 \(toolName)")
+            return try JSONDecoder().decode(PcToolResult.self, from: data)
+        } catch {
+            await AppLogger.shared.log(
+                .error,
+                category: "pc-tool",
+                message: "电脑工具请求失败: \(error.localizedDescription)",
+                traceId: traceId,
+                metadata: ["tool_name": toolName]
+            )
+            throw error
+        }
     }
 
     /**
@@ -84,4 +100,31 @@ final class PcToolService {
     func reset() {
         availableTools = []
     }
+
+    /**
+     * 校验电脑服务 HTTP 响应。
+     *
+     * @param response HTTP 响应
+     * @param data 响应数据
+     * @param operation 操作名称
+     * @throws 响应状态异常
+     */
+    private func validate(response: URLResponse, data: Data, operation: String) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw PcError.toolFailed("\(operation)未返回有效响应")
+        }
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            let responseError = try? JSONDecoder().decode(PcErrorResponse.self, from: data)
+            let message = responseError?.error?.message ?? "HTTP \(httpResponse.statusCode)"
+            throw PcError.toolFailed("\(operation)失败: \(message)")
+        }
+    }
+}
+
+/**
+ * 电脑服务通用错误响应。
+ */
+private struct PcErrorResponse: Decodable {
+    /// 错误详情。
+    let error: PcToolError?
 }

@@ -1,50 +1,42 @@
 import SwiftUI
 
 /**
- * 思考动画指示器
- *
- * 三点脉动，品牌色，带"小笔正在思考..."文字。
+ * 智能体思考状态。
  *
  * @author xiangwei
  */
 struct ThinkingIndicator: View {
-    @State private var phase = 0.0
+    @State private var phase = false
 
     var body: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 6) {
+        HStack(spacing: 9) {
+            HStack(spacing: 4) {
                 ForEach(0..<3) { index in
                     Circle()
                         .fill(Color.brandGold)
-                        .frame(width: 8, height: 8)
-                        .opacity(pulseOpacity(for: index))
+                        .frame(width: 6, height: 6)
+                        .scaleEffect(phase ? 1 : 0.55)
+                        .opacity(phase ? 1 : 0.28)
                         .animation(
-                            .easeInOut(duration: 0.6)
+                            .easeInOut(duration: 0.62)
                                 .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.2),
+                                .delay(Double(index) * 0.16),
                             value: phase
                         )
                 }
             }
 
-            Text("小笔正在思考...")
+            Text("小笔正在整理")
                 .font(.bibiCaption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.thinMaterial, in: Capsule())
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
         .onAppear {
-            phase = 1.0
+            phase = true
         }
-    }
-
-    private func pulseOpacity(for index: Int) -> Double {
-        let base: Double = 0.3
-        let peak: Double = 1.0
-        let offset = Double(index) * 0.33
-        let value = sin((phase + offset) * .pi)
-        return base + (peak - base) * value
     }
 }

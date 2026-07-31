@@ -1,40 +1,41 @@
 import SwiftUI
 
-/// 动态 MeshGradient 背景视图
-///
-/// 使用 iOS 18+ 的 MeshGradient 创建缓慢流动的渐变背景，
-/// 根据当前色彩模式自动切换暗色/亮色调色板。
+/**
+ * 应用内容画布。
+ *
+ * 使用低饱和多色网格为玻璃导航提供采样层，同时保持财务内容的可读性。
+ *
+ * @author xiangwei
+ */
 struct AnimatedBackground: View {
-    @State private var startTime = Date()
     @Environment(\.colorScheme) private var colorScheme
 
-    /// 根据当前色彩模式选择 MeshGradient 颜色
-    private var meshColors: [Color] {
-        colorScheme == .dark ? Color.darkMeshColors : Color.lightMeshColors
+    var body: some View {
+        MeshGradient(
+            width: 3,
+            height: 3,
+            points: [
+                [0, 0], [0.5, 0], [1, 0],
+                [0, 0.5], [0.5, 0.5], [1, 0.5],
+                [0, 1], [0.5, 1], [1, 1]
+            ],
+            colors: meshColors
+        )
+        .ignoresSafeArea()
     }
 
-    var body: some View {
-        if #available(iOS 18, *) {
-            TimelineView(.animation(minimumInterval: 0.05)) { timeline in
-                let elapsed = timeline.date.timeIntervalSince(startTime)
-
-                MeshGradient(
-                    width: 3,
-                    height: 3,
-                    points: [
-                        [0, 0], [0.5, 0], [1, 0],
-                        [0, 0.5],
-                        [0.5 + 0.12 * Float(sin(elapsed * 0.25 + 1.0)),
-                         0.5 + 0.08 * Float(cos(elapsed * 0.35))],
-                        [1, 0.5],
-                        [0, 1], [0.5, 1], [1, 1]
-                    ],
-                    colors: meshColors
-                )
-            }
-            .ignoresSafeArea()
-        } else {
-            Color.appBackground.ignoresSafeArea()
+    private var meshColors: [Color] {
+        if colorScheme == .dark {
+            return [
+                Color(hex: "101113"), Color(hex: "171613"), Color(hex: "101416"),
+                Color(hex: "131719"), Color(hex: "111214"), Color(hex: "181411"),
+                Color(hex: "0C0D0F"), Color(hex: "101312"), Color(hex: "0D0E10")
+            ]
         }
+        return [
+            Color(hex: "F7F7F9"), Color(hex: "FFF8E9"), Color(hex: "F2F8F7"),
+            Color(hex: "F1F5FA"), Color(hex: "F7F7F8"), Color(hex: "FFF5EF"),
+            Color(hex: "F5F5F7"), Color(hex: "F0F7F4"), Color(hex: "F6F4F8")
+        ]
     }
 }

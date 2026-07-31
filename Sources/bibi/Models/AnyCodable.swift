@@ -24,7 +24,7 @@ struct AnyCodable: Codable {
     /**
      * 从 Decoder 解码
      *
-     * 先解码为原始 JSON 字符串，再用 JSONSerialization 解析为任意值。
+     * 按字符串、布尔值、数字、数组、字典和 null 的顺序解析 JSON 值。
      */
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -51,7 +51,7 @@ struct AnyCodable: Codable {
     /**
      * 编码到 Encoder
      *
-     * 使用 JSONSerialization 将任意值序列化后再编码。
+     * 直接按 JSON 基础类型递归编码，避免顶层标量触发 JSONSerialization 异常。
      */
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
@@ -61,10 +61,7 @@ struct AnyCodable: Codable {
             return
         }
 
-        let data = try JSONSerialization.data(withJSONObject: value, options: [])
-        let jsonObject = try JSONSerialization.jsonObject(with: data)
-
-        try encodeValue(jsonObject, into: &container)
+        try encodeValue(value, into: &container)
     }
 
     /**
@@ -78,16 +75,32 @@ struct AnyCodable: Codable {
             try container.encode(bool)
         case let int as Int:
             try container.encode(int)
+        case let int64 as Int64:
+            try container.encode(int64)
+        case let uint as UInt:
+            try container.encode(uint)
         case let double as Double:
             try container.encode(double)
+        case let float as Float:
+            try container.encode(float)
+        case let array as [AnyCodable]:
+            try container.encode(array)
         case let array as [Any]:
             let wrapped = array.map { AnyCodable($0) }
             try container.encode(wrapped)
+        case let dictionary as [String: AnyCodable]:
+            try container.encode(dictionary)
         case let dictionary as [String: Any]:
             let wrapped = dictionary.mapValues { AnyCodable($0) }
             try container.encode(wrapped)
         default:
-            try container.encode(String(describing: value))
+            throw EncodingError.invalidValue(
+                value,
+                EncodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "不支持的 JSON 值类型: \(type(of: value))"
+                )
+            )
         }
     }
 }

@@ -1,44 +1,170 @@
 import Foundation
 
+/**
+ * 对话持久化管理器。
+ *
+ * @author xiangwei
+ */
 @Observable
 final class ConversationManager {
     private(set) var conversations: [Conversation] = []
     private(set) var currentConversationId: UUID?
     private let db = DatabaseManager.shared
-    init() { loadAll() }
-    private func loadAll() {
-        guard let records: [ConversationRecord] = try? db.fetch("SELECT * FROM conversation ORDER BY updated_at DESC") else { return }
-        conversations = records.map { $0.toConversation() }
+
+    init() {
+        loadAll()
     }
+
+    /**
+     * 加载指定用户的历史对话。
+     *
+     * @param userId 本地用户标识
+     */
     func loadConversations(for userId: UUID) {
-        guard let records: [ConversationRecord] = try? db.fetch("SELECT * FROM conversation WHERE owner_id = ? ORDER BY updated_at DESC", args: [userId.uuidString]) else { return }
+        let sql = """
+            SELECT * FROM conversation
+            WHERE owner_id = ?
+            ORDER BY updated_at DESC
+            """
+        guard let records: [ConversationRecord] = try? db.fetch(sql, args: [userId.uuidString]) else {
+            return
+        }
         conversations = records.map { $0.toConversation() }
+        if !conversations.contains(where: { $0.id == currentConversationId }) {
+            currentConversationId = nil
+        }
     }
+
+    /**
+     * 创建新对话。
+     *
+     * @param title 对话标题
+     * @param ownerId 本地用户标识
+     * @returns 新对话
+     */
     @discardableResult
     func createConversation(title: String = "新对话", ownerId: UUID) -> Conversation {
-        let c = Conversation(title: title, ownerId: ownerId); let r = ConversationRecord.from(c)
-        try? db.run("INSERT INTO conversation(id,title,created_at,updated_at,message_count,owner_id) VALUES(?,?,?,?,?,?)", args: [r.id, r.title, r.createdAt, r.updatedAt, r.messageCount, r.ownerId])
-        conversations.insert(c, at: 0); currentConversationId = c.id; return c
+        let conversation = Conversation(title: title, ownerId: ownerId)
+        let record = ConversationRecord.from(conversation)
+        let sql = """
+            INSERT INTO conversation(
+                id, title, created_at, updated_at, message_count, owner_id
+            ) VALUES(?, ?, ?, ?, ?, ?)
+            """
+        try? db.run(
+            sql,
+            args: [
+                record.id,
+                record.title,
+                record.createdAt,
+                record.updatedAt,
+                record.messageCount,
+                record.ownerId
+            ]
+        )
+        conversations.insert(conversation, at: 0)
+        currentConversationId = conversation.id
+        return conversation
     }
+
+    /**
+     * 切换对话并加载消息。
+     *
+     * @param id 对话标识
+     * @returns 对话消息
+     */
+    func switchConversation(id: UUID) -> [ChatMessage] {
+        currentConversationId = id
+        return loadMessages(for: id)
+    }
+
+    /**
+     * 删除对话及其消息。
+     *
+     * @param id 对话标识
+     */
     func deleteConversation(id: UUID) {
-        try? db.run("DELETE FROM conversation WHERE id = ?", args: [id.uuidString])
         try? db.run("DELETE FROM chat_message_record WHERE conversation_id = ?", args: [id.uuidString])
-        conversations.removeAll { $0.id == id }; if currentConversationId == id { currentConversationId = nil }
-    }
-    func renameConversation(id: UUID, title: String) {
-        try? db.run("UPDATE conversation SET title = ?, updated_at = ? WHERE id = ?", args: [title, Date(), id.uuidString])
-        conversations.first(where: { $0.id == id })?.title = title
-    }
-    func switchConversation(id: UUID) { currentConversationId = id }
-    func saveMessages(_ messages: [ChatMessage], for userId: UUID?) {
-        guard let convId = currentConversationId?.uuidString else { return }
-        let now = Date()
-        for m in messages {
-            let json = m.toolArgs.flatMap { try? JSONSerialization.data(withJSONObject: $0) }.flatMap { String(data: $0, encoding: .utf8) }
-            try? db.run("INSERT INTO chat_message_record(id,role,content,created_at,tool_name,tool_args_json,tool_status,tool_summary,conversation_id) VALUES(?,?,?,?,?,?,?,?,?)",
-                        args: [UUID().uuidString, m.role.rawValue, m.text, now, m.toolName ?? .none, json ?? .none, m.toolStatus?.rawValue ?? .none, m.toolSummary ?? .none, convId])
+        try? db.run("DELETE FROM conversation WHERE id = ?", args: [id.uuidString])
+        conversations.removeAll { $0.id == id }
+        if currentConversationId == id {
+            currentConversationId = nil
         }
-        try? db.run("UPDATE conversation SET message_count = message_count + ?, updated_at = ? WHERE id = ?", args: [messages.count, now, convId])
-        conversations.first(where: { $0.id.uuidString == convId })?.messageCount += messages.count
+    }
+
+    /**
+     * 清空内存中的会话状态。
+     */
+    func clear() {
+        conversations.removeAll()
+        currentConversationId = nil
+    }
+
+    /**
+     * 增量追加消息。
+     *
+     * @param messages 本轮新增消息
+     */
+    func appendMessages(_ messages: [ChatMessage]) {
+        guard let conversationId = currentConversationId, !messages.isEmpty else { return }
+        let sql = """
+            INSERT OR REPLACE INTO chat_message_record(
+                id, role, content, created_at, tool_name,
+                tool_args_json, tool_status, tool_summary, conversation_id
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+
+        for message in messages {
+            let record = ChatMessageRecord.from(message, conversationId: conversationId)
+            try? db.run(
+                sql,
+                args: [
+                    record.id,
+                    record.role,
+                    record.content,
+                    record.createdAt,
+                    record.toolName ?? .none,
+                    record.toolArgsJSON ?? .none,
+                    record.toolStatus ?? .none,
+                    record.toolSummary ?? .none,
+                    record.conversationId ?? .none
+                ]
+            )
+        }
+
+        let updatedAt = Date()
+        let updateSql = """
+            UPDATE conversation
+            SET message_count = message_count + ?, updated_at = ?
+            WHERE id = ?
+            """
+        try? db.run(updateSql, args: [messages.count, updatedAt, conversationId.uuidString])
+
+        if let conversation = conversations.first(where: { $0.id == conversationId }) {
+            conversation.messageCount += messages.count
+            conversation.updatedAt = updatedAt
+        }
+        conversations.sort { $0.updatedAt > $1.updatedAt }
+    }
+
+    private func loadAll() {
+        let sql = "SELECT * FROM conversation ORDER BY updated_at DESC"
+        guard let records: [ConversationRecord] = try? db.fetch(sql) else { return }
+        conversations = records.map { $0.toConversation() }
+    }
+
+    private func loadMessages(for conversationId: UUID) -> [ChatMessage] {
+        let sql = """
+            SELECT * FROM chat_message_record
+            WHERE conversation_id = ?
+            ORDER BY created_at ASC
+            """
+        guard let records: [ChatMessageRecord] = try? db.fetch(
+            sql,
+            args: [conversationId.uuidString]
+        ) else {
+            return []
+        }
+        return records.map { $0.toChatMessage() }
     }
 }

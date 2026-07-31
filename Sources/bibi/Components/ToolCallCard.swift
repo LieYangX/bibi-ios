@@ -1,85 +1,76 @@
 import SwiftUI
 
 /**
- * 工具调用卡片
- *
- * 显示工具执行的实时状态：进行中、成功、失败。
+ * 低强调工具调用状态行。
  *
  * @author xiangwei
  */
 struct ToolCallCard: View {
     let name: String
     let status: ToolCallStatus
-    @State private var isExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 标题行
-            HStack(spacing: 8) {
-                Image(systemName: statusIcon)
-                    .foregroundColor(statusColor)
-                    .symbolEffect(.pulse, options: status == .inProgress ? .repeating : .nonRepeating)
+        HStack(spacing: 6) {
+            Image(systemName: statusIcon)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(statusColor)
 
-                Text(name)
-                    .font(.bibiCaptionSemibold)
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                if status == .inProgress {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                }
-            }
-
-            // 状态文本
             Text(statusText)
-                .font(.bibiCaption)
-                .foregroundColor(.secondary)
-        }
-        .padding(12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(statusBorderColor, lineWidth: 1)
-        )
-        .onTapGesture {
-            withAnimation(.snappy) {
-                isExpanded.toggle()
+                .font(.caption2)
+                .foregroundStyle(status == .failed ? Color.secondary : Color.secondary.opacity(0.72))
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            if status == .inProgress {
+                ProgressView()
+                    .controlSize(.mini)
+                    .tint(.secondary)
             }
         }
+        .frame(maxWidth: 560, alignment: .leading)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 3)
     }
 
     private var statusIcon: String {
+        if status == .inProgress, let localToolIcon = LocalToolService.iconName(for: name) {
+            return localToolIcon
+        }
+
         switch status {
-        case .inProgress: return "circle.dotted"
-        case .succeeded: return "checkmark.circle.fill"
-        case .failed: return "xmark.circle.fill"
+        case .inProgress:
+            return "gearshape"
+        case .succeeded:
+            return "checkmark"
+        case .failed:
+            return "exclamationmark.circle"
         }
     }
 
     private var statusColor: Color {
         switch status {
-        case .inProgress: return .accentCyan
-        case .succeeded: return .successGreen
-        case .failed: return .errorRed
+        case .inProgress:
+            return .secondary
+        case .succeeded:
+            return .secondary.opacity(0.72)
+        case .failed:
+            return .errorRed.opacity(0.85)
         }
     }
 
     private var statusText: String {
         switch status {
-        case .inProgress: return "正在调用 \(name)..."
-        case .succeeded: return "\(name) 执行成功"
-        case .failed: return "\(name) 执行失败"
+        case .inProgress:
+            return "正在使用 \(displayName)"
+        case .succeeded:
+            return "\(displayName) 已完成"
+        case .failed:
+            return "\(displayName) 执行失败"
         }
     }
 
-    private var statusBorderColor: Color {
-        switch status {
-        case .inProgress: return .accentCyan.opacity(0.3)
-        case .succeeded: return .successGreen.opacity(0.3)
-        case .failed: return .errorRed.opacity(0.3)
-        }
+    private var displayName: String {
+        LocalToolService.displayName(for: name)
     }
 }

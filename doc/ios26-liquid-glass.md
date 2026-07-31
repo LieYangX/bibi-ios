@@ -41,7 +41,7 @@
 .glassEffect(in: .capsule)                      // 默认
 .glassEffect(in: .circle)
 .glassEffect(in: .rect(cornerRadius: 16))
-.glassEffect(in: .rect(cornerRadius: .containerConcentric)) // 自动匹配父容器圆角
+.glassEffect(in: .rect(corners: .concentric)) // 自动匹配父容器圆角
 ```
 
 ## GlassEffectContainer

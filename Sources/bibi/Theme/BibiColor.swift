@@ -1,101 +1,83 @@
 import SwiftUI
 
-// MARK: - 品牌色 (iOS 短信风格)
+// MARK: - 品牌色
 
 extension Color {
-    /// 品牌蓝色 - iOS 短信蓝 #007AFF
-    static let brandBlue = Color(hex: "007AFF")
+    /// 品牌暖金，用于标识与少量强调，不承担大面积内容背景。
+    static let brandGold = Color(hex: "E9A91B")
 
-    /// 品牌蓝色（半透明）
-    static let brandBlueLight = Color(hex: "007AFF").opacity(0.15)
+    /// 品牌暖金浅色层。
+    static let brandGoldLight = Color(hex: "E9A91B").opacity(0.14)
 
-    /// 品牌蓝色（深色变体）
-    static let brandBlueDark = Color(hex: "0055CC")
+    /// 品牌暖金深色层。
+    static let brandGoldDark = Color(hex: "B87400")
+
+    /// 主要交互色，跟随系统明暗模式。
+    static var accentBlue: Color {
+        Color(uiColor: .systemBlue)
+    }
 }
 
-// MARK: - 语义色彩（自适应深色/亮色模式）
+// MARK: - 界面层级色
 
 extension Color {
-    /// 导航层背景
+    /// 导航层背景。
     static var navigationBackground: Color {
-        Color(uiColor: UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(red: 0.05, green: 0.05, blue: 0.07, alpha: 1)
-                : UIColor(red: 0.98, green: 0.98, blue: 0.98, alpha: 1)
-        })
+        Color(uiColor: .systemBackground)
     }
 
-    /// 内容层背景
+    /// 内容层背景。
     static var contentBackground: Color {
-        Color(uiColor: UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(red: 0.05, green: 0.05, blue: 0.07, alpha: 1)
-                : UIColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1)
-        })
+        Color(uiColor: .systemGroupedBackground)
     }
 
-    /// 内容层卡片背景
+    /// 内容卡片背景。
     static var contentCardBackground: Color {
-        Color(uiColor: UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(red: 0.08, green: 0.08, blue: 0.10, alpha: 1)
-                : UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1)
-        })
+        Color(uiColor: .secondarySystemGroupedBackground)
+    }
+
+    /// 细分隔线。
+    static var hairline: Color {
+        Color(uiColor: .separator).opacity(0.45)
     }
 }
 
-// MARK: - 消息气泡色彩（iOS 短信风格）
+// MARK: - 消息色
 
 extension Color {
-    /// 用户消息气泡背景 - iOS 蓝色
-    static let userBubbleBackground = Color.brandBlue
+    /// 用户消息气泡背景。
+    static var userBubbleBackground: Color {
+        Color(uiColor: .systemGray5)
+    }
 
-    /// 用户消息气泡文字 - 白色
-    static let userBubbleText = Color.white
+    /// 用户消息气泡文字。
+    static var userBubbleText: Color {
+        Color(uiColor: .label)
+    }
 
-    /// 助手消息气泡背景 - 浅灰（亮色）/ 深灰（暗色）
+    /// 助手消息气泡背景。
     static var assistantBubbleBackground: Color {
-        Color(uiColor: UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
-                : UIColor(red: 0.91, green: 0.91, blue: 0.92, alpha: 1)
-        })
+        Color(uiColor: .secondarySystemBackground)
     }
 
-    /// 工具调用卡片背景
+    /// 工具调用卡片背景。
     static var toolCardBackground: Color {
-        Color(uiColor: UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1)
-                : UIColor(red: 0.96, green: 0.96, blue: 0.98, alpha: 1)
-        })
+        Color(uiColor: .secondarySystemGroupedBackground)
     }
 
-    /// 工具结果卡片背景
+    /// 工具结果卡片背景。
     static var toolResultBackground: Color {
-        Color(uiColor: UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(red: 0.10, green: 0.10, blue: 0.12, alpha: 1)
-                : UIColor(red: 0.95, green: 0.95, blue: 0.97, alpha: 1)
-        })
+        Color(uiColor: .tertiarySystemGroupedBackground)
     }
 }
 
-// MARK: - 交互状态色彩
+// MARK: - 状态色
 
 extension Color {
-    /// 成功/正向 - 绿色
-    static let successGreen = Color(red: 0.20, green: 0.80, blue: 0.29)
-
-    /// 错误/负向 - 红色
-    static let errorRed = Color(red: 1.00, green: 0.27, blue: 0.23)
-
-    /// 交互强调 - 蓝色
-    static let accentBlue = Color(hex: "007AFF")
-
-    /// 警告 - 黄色
-    static let warningYellow = Color(red: 1.00, green: 0.80, blue: 0.30)
-
-    /// 链接文字色 - 蓝色
-    static let linkColor = Color(hex: "007AFF")
+    static var successGreen: Color { Color(uiColor: .systemGreen) }
+    static var errorRed: Color { Color(uiColor: .systemRed) }
+    static var warningYellow: Color { Color(uiColor: .systemOrange) }
+    static var linkColor: Color { Color(uiColor: .link) }
+    static let incomeGreen = Color(uiColor: .systemGreen)
+    static let expenseRed = Color(uiColor: .systemRed)
 }

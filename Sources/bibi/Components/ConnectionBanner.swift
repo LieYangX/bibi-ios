@@ -1,10 +1,9 @@
 import SwiftUI
 
 /**
- * 连接状态横幅
+ * PC 连接状态胶囊。
  *
- * 展示 PC 连接状态：搜索中、已连接、已断开。
- * 使用 .glassEffect()（导航层材质）。可折叠。
+ * 状态胶囊属于导航层，使用 Liquid Glass 并提供进入连接设置的入口。
  *
  * @author xiangwei
  */
@@ -14,48 +13,73 @@ struct ConnectionBanner: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
+        HStack {
+            Spacer(minLength: 16)
 
-                Text(statusText)
-                    .font(.bibiCaption)
+            Button(action: onTap) {
+                HStack(spacing: 8) {
+                    Image(systemName: statusIcon)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(statusColor)
+                        .symbolEffect(.pulse, options: state == .searching ? .repeating : .nonRepeating)
 
-                Spacer()
+                    Text(statusText)
+                        .font(.bibiCaptionSemibold)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
 
-                Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 13)
+                .frame(minHeight: 36)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.regularMaterial)
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .capsule)
+            .accessibilityHint("打开 PC 连接设置")
+
+            Spacer(minLength: 16)
         }
-        .buttonStyle(.plain)
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .padding(.vertical, 6)
+    }
+
+    private var statusIcon: String {
+        switch state {
+        case .searching:
+            return "antenna.radiowaves.left.and.right"
+        case .found:
+            return "desktopcomputer"
+        case .connected:
+            return "checkmark.circle.fill"
+        case .disconnected:
+            return "exclamationmark.circle.fill"
+        }
     }
 
     private var statusColor: Color {
         switch state {
-        case .searching: return .warningYellow
-        case .found: return .accentCyan
-        case .connected: return .successGreen
-        case .disconnected: return .errorRed
+        case .searching:
+            return .warningYellow
+        case .found:
+            return .accentBlue
+        case .connected:
+            return .successGreen
+        case .disconnected:
+            return .errorRed
         }
     }
 
     private var statusText: String {
         switch state {
         case .searching:
-            return "正在搜索 PC..."
+            return "正在寻找电脑"
         case .found:
-            return "已发现 PC，请配对连接"
+            return pcName.map { "发现 \($0)" } ?? "发现可连接电脑"
         case .connected:
-            return "已连接到 \(pcName ?? "PC")"
+            return pcName.map { "已连接 \($0)" } ?? "电脑已连接"
         case .disconnected:
-            return "已断开连接"
+            return "电脑未连接"
         }
     }
 }

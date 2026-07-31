@@ -17,10 +17,15 @@ final class BonjourDiscovery: NSObject, NetServiceBrowserDelegate, NetServiceDel
     /// 已解析的服务（避免重复委托）
     private var resolvingServices: Set<NetService> = []
 
+    /// 当前是否允许接收发现结果。
+    private var isSearching = false
+
     /**
      * 开始搜索 PC 服务
      */
     func start() {
+        stop()
+        isSearching = true
         browser.delegate = self
         browser.searchForServices(ofType: "_bibi-tools._tcp", inDomain: "local.")
     }
@@ -29,12 +34,19 @@ final class BonjourDiscovery: NSObject, NetServiceBrowserDelegate, NetServiceDel
      * 停止搜索
      */
     func stop() {
+        isSearching = false
         browser.stop()
+        resolvingServices.forEach { service in
+            service.stop()
+            service.delegate = nil
+        }
+        resolvingServices.removeAll()
     }
 
     // MARK: - NetServiceBrowserDelegate
 
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
+        guard isSearching else { return }
         service.delegate = self
         resolvingServices.insert(service)
         service.resolve(withTimeout: 5.0)
@@ -47,6 +59,12 @@ final class BonjourDiscovery: NSObject, NetServiceBrowserDelegate, NetServiceDel
     // MARK: - NetServiceDelegate
 
     func netServiceDidResolveAddress(_ service: NetService) {
+        defer {
+            resolvingServices.remove(service)
+            service.delegate = nil
+        }
+
+        guard isSearching else { return }
         guard let hostName = service.hostName else { return }
 
         let txt = service.txtRecordData().flatMap { NetService.dictionary(fromTXTRecord: $0) }
