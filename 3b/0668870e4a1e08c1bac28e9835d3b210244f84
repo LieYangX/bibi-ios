@@ -1,0 +1,333 @@
+Sources/bibi/Services/ToolCallAccumulator.swift
+  s_98cedb1c8313d0::t_9a519b29c48b71 17,37,61
+Sources/bibi/Models/ChatMessage.swift
+  s_58ab5c033327eb::t_f974ca6090ca36 127-128
+  s_58ab5c033327eb::t_b93b9e68361f58 140-141
+  s_58ab5c033327eb::t_cfb83bcc093085 109-110
+  s_58ab5c033327eb::t_98d0416d4270de 81-82
+  s_38958f27a95686::t_45e6aa3b4f74de 58-60
+  s_58ab5c033327eb::t_b50121221ec7eb 100-101
+  s_58ab5c033327eb::t_eaab6c0cb63adb 118-119
+Sources/bibi/Services/SkillMCPService.swift
+  s_fb3aeb281b3459::t_acf28cac49a11c 1-119,126,147-153
+  s_fb3aeb281b3459::t_bdd345dd56cd82 120-125,127-146
+Sources/bibi/Components/ToolCallCard.swift
+  s_1592418f6fb2d5::t_878e8f15919291 15,19
+Sources/bibi/Services/MCPClient.swift
+  s_fb3aeb281b3459::t_088f1589bb8424 1-29,31-70,72-76,78,85-110
+  s_fb3aeb281b3459::t_921cbb24d02b67 30
+  s_fb3aeb281b3459::t_08d52a6f47d2bd 77,79,84
+  s_fb3aeb281b3459::t_54b7bd1f47902d 80-83
+  s_fb3aeb281b3459::t_fed51cc5460cd9 71
+Sources/bibi/Services/UserManager.swift
+  s_58ab5c033327eb::t_10a6415d1c8dfa 56
+  s_58ab5c033327eb::t_f21b3b9e74dddc 65
+  s_58ab5c033327eb::t_a149d0b61c4355 117
+  s_58ab5c033327eb::t_f3043316fda520 12-13
+  s_58ab5c033327eb::t_a86f6dcb47d94e 14
+  s_58ab5c033327eb::t_3fc8dc71ed2026 57
+Sources/bibi/Services/AgentLogger.swift
+  s_58ab5c033327eb::t_9d5b302c522065 1-116,118-119
+  s_58ab5c033327eb::t_4907b5be5445ae 117
+Sources/bibi/Services/DatabaseManager.swift
+  s_38958f27a95686::t_a4db1473e25b11 49-54
+  s_58ab5c033327eb::t_166de7a361034e 11
+  s_58ab5c033327eb::t_b3966895ffa988 132-203
+  s_58ab5c033327eb::t_bc4cc34d3022db 35-48
+  s_58ab5c033327eb::t_1c0fbf5e3fd145 71
+Sources/bibi/Services/AgentService.swift
+  s_fb3aeb281b3459::t_2fb38c24f597f2 271-279
+  s_1592418f6fb2d5::t_46511eeb504cd2 16-17,19-28,30-31,33-42,45,47-52,54,56-57
+  s_58ab5c033327eb::t_1c2ad78ed37e61 174-175,177-178,180-181,183-184
+  s_58ab5c033327eb::t_c84af2c08df3ad 443-452
+  s_fb3aeb281b3459::t_dcd1b18e0027e6 289-290
+  s_58ab5c033327eb::t_b9f16745fc5c80 316
+  s_58ab5c033327eb::t_03a088d43502dd 496-499
+  s_58ab5c033327eb::t_4a3cfe3f641171 176,179,182
+  s_1592418f6fb2d5::t_9a0f4195ac8cb8 468-473
+  s_1592418f6fb2d5::t_41f777d492d4c3 18,29,43-44,46,53,55
+  s_1592418f6fb2d5::t_061a1cc0b53089 255-256
+  s_38958f27a95686::t_f55e9c5ffa5ec8 332,334
+  s_fb3aeb281b3459::t_6e1c4f4ff814cd 122,130
+  s_1592418f6fb2d5::t_1add5aa668d879 500-501,503-504
+  h_1d1a3d05761997 32
+  s_fb3aeb281b3459::t_05c5fbe9719503 73-75
+  s_38958f27a95686::t_95ff5a7151a651 88,90-109
+  s_98cedb1c8313d0::t_9a519b29c48b71 114,138,151,173,187,199,227,419,432,442,457,491,522,532,552,568,660,693,705,732,743,757,775
+  s_38958f27a95686::t_d1ccabf70519b2 317-319,323,331,333,335,370,373
+  s_1592418f6fb2d5::t_ac722867a10f0d 356-363
+  s_38958f27a95686::t_c33c1fc2e9d073 533-549
+  s_fb3aeb281b3459::t_70528073b21e4f 671-674
+Sources/bibi/Views/ConversationListView.swift
+  s_fb3aeb281b3459::t_d3117597abd490 31,39-44
+  s_38958f27a95686::t_bd3b56aafd615a 54
+  s_fb3aeb281b3459::t_c13c6abd1eb069 6
+  s_58ab5c033327eb::t_fad26327f92d39 7,13-14,62-73,89,107,116-126
+  s_fb3aeb281b3459::t_45381d030cc012 29-30,32-38,46,77,111,115
+Sources/bibi/Models/LLMTypes.swift
+  s_38958f27a95686::t_803399a37cb6f5 6,11-13,24-44
+  s_38958f27a95686::t_dbdb4ca8d82d7d 181-183,191
+  s_38958f27a95686::t_ac7092feee5805 80-81
+  s_38958f27a95686::t_69a8943342b950 102,130-132
+  s_38958f27a95686::t_783d50acd140b0 45-46
+  s_38958f27a95686::t_dec8441ff40b5d 133-134
+Sources/bibi/Views/AgentChatView.swift
+  s_38958f27a95686::t_3b90c26a846e6d 143-145
+  s_58ab5c033327eb::t_c8447e1d46fd08 205
+  s_58ab5c033327eb::t_d71f681922a673 211-212,214
+  s_58ab5c033327eb::t_4123c78ef69789 213
+  s_58ab5c033327eb::t_99cbcc7640b4c6 232
+  s_58ab5c033327eb::t_49d9c1dda8caca 239
+Sources/bibi/Views/AppLogView.swift
+  s_1592418f6fb2d5::t_9b7942bfac2dac 72-76
+  s_1592418f6fb2d5::t_59063ae4e8eb0c 107-111
+  s_1592418f6fb2d5::t_3a5c2d807adc9e 15
+  s_58ab5c033327eb::t_0319bb5009b707 54-60
+  s_98cedb1c8313d0::t_9a519b29c48b71 138,148,162,215,287
+Sources/bibi/Views/MCPConfigView.swift
+  s_fb3aeb281b3459::t_a95a696b87a50b 1-10,12-14,16-21,23-25,27-41,43-47,50-57,59-95,97-101,103-106,109,116-122,124-172,174-179
+  s_fb3aeb281b3459::t_3e94a8126a0fe5 11,15,22,26,42,48-49,58,96,102,107-108,110-115,123,173
+Sources/bibi/Services/LocalToolService.swift
+  s_fb3aeb281b3459::t_fae22119c089fa 606-610
+  s_fb3aeb281b3459::t_09873f53bfff8d 232-233
+  s_fb3aeb281b3459::t_3967577bd3c2ea 1011-1013
+  s_98cedb1c8313d0::t_9a519b29c48b71 167,180,214,244,274,290,319,335,358,376,398,419,446,488,539,569,595,801,822,839,853,903,919,930,945,955,976
+  s_fb3aeb281b3459::t_6770c6b2b56727 262-263
+  s_fb3aeb281b3459::t_2b47b341423e14 5
+  s_fb3aeb281b3459::t_da4f8326571baf 38-40
+  s_fb3aeb281b3459::t_5b3ee2a69c8bf2 154-158
+  s_fb3aeb281b3459::t_8cb013d85fcebb 70-71,73-75
+  s_fb3aeb281b3459::t_ee10ca645bead7 596-605,611-614,616,621-645,647-650,653-656,658-661,663-666,668-672,674-679,792-793
+  s_fb3aeb281b3459::t_ca82c5edd2f690 646,651-652,657,662,667,673,680-791
+  s_fb3aeb281b3459::t_e6c6d7c1a18ab1 200-201
+  s_fb3aeb281b3459::t_a0f13ab706047f 1028-1029
+  s_fb3aeb281b3459::t_8f44ab5b103edf 278
+  s_cf4d27f8ef28ff::t_1cfd474aab67fd 615,617-620
+  s_fb3aeb281b3459::t_0ed924be5ab78b 65-69,72,76-77
+  s_fb3aeb281b3459::t_efa19771717e16 308-309
+Sources/bibi/Models/Skill.swift
+  s_fb3aeb281b3459::t_4b6257d2cceec6 1-51
+Sources/bibi/Models/MCPConfig.swift
+  s_fb3aeb281b3459::t_81243b5d65e8e1 1,4-6,10-55
+Sources/bibi/Models/ThemeManager.swift
+  s_58ab5c033327eb::t_a0d53dfdce72f0 28-34
+  s_58ab5c033327eb::t_c315a42e138c0b 3-9
+Sources/bibi/Services/BonjourDiscovery.swift
+  s_58ab5c033327eb::t_f3650f7d1bdc29 24-26
+  s_58ab5c033327eb::t_7a965139cff205 50
+  s_58ab5c033327eb::t_fad34090ed527e 63
+  s_58ab5c033327eb::t_1032cd85ac834b 36-38
+Sources/bibi/bibiApp.swift
+  s_fb3aeb281b3459::t_22a79d63438c76 57,65
+  s_58ab5c033327eb::t_5771a4c82a12ee 77,80
+  s_58ab5c033327eb::t_83182207b0bfad 78-79
+Sources/bibi/Models/ChatMessageRecord.swift
+  s_38958f27a95686::t_12e5864185cb03 13,25,46,66
+Resources/Info.plist
+  s_fb3aeb281b3459::t_bbca94f9840d2e 15-16
+Sources/bibi/Models/Conversation.swift
+  s_58ab5c033327eb::t_302e78a2d628b6 3-9
+Sources/bibi/Views/AgentLogView.swift
+  s_1592418f6fb2d5::t_a8bd28a9a1ff74 306-323
+  s_58ab5c033327eb::t_2f5692dffa9869 286-305
+  s_58ab5c033327eb::t_0caedd0844cb85 1-197,200-205,221-222,229,231-271,324-341
+  s_1592418f6fb2d5::t_171a46bbd809d9 199,206-220
+  s_38958f27a95686::t_f8b2395f3e2af7 223-228,230
+  s_fb3aeb281b3459::t_62d908e8c3621e 198
+  s_38958f27a95686::t_1d0e1cee6c5fa5 272-285
+Package.swift
+  s_1a2cdf477d3c3c::t_83387ae67aeb4b 27-29
+  s_fb3aeb281b3459::t_769f2c7dab6c40 19,26
+Sources/bibi/Services/SettingsStore.swift
+  s_58ab5c033327eb::t_535da434a2473a 3-9
+  s_58ab5c033327eb::t_371813b53fec03 19,24-25
+  s_58ab5c033327eb::t_c996de8158b7d4 13,16-17,21-23,26
+  s_58ab5c033327eb::t_338869f722904c 18,20
+Sources/bibi/Components/MessageBubble.swift
+  s_1592418f6fb2d5::t_ec068490232549 16,51-55,71-72,76-78,80-81,130-131,156-178
+  s_1592418f6fb2d5::t_65e387542b7b15 37-42,79
+  s_58ab5c033327eb::t_8917a64b847fcd 85,94,96-102,108,110
+  s_58ab5c033327eb::t_e0b29909ee9f4e 6
+  s_1a2cdf477d3c3c::t_6c75982d62b71a 17,23-24
+  s_1592418f6fb2d5::t_624e8eee5d1482 57-62
+  s_1a2cdf477d3c3c::t_63594d6c50be97 63-70
+  s_38958f27a95686::t_bb4df83a9ce39f 82,115-116,123-129,133-147,179-184,186-192,194-203,277-287
+  s_1a2cdf477d3c3c::t_23ffb978226743 117-121
+  s_1a2cdf477d3c3c::t_dc1a4ab0c5275a 56,185,193,204-276
+  s_1592418f6fb2d5::t_9c163471c5f671 292,296
+  s_38958f27a95686::t_adfe0540f13ad1 83
+  s_38958f27a95686::t_52500ac402cd11 288
+Sources/bibi/Services/KeychainHelper.swift
+  s_58ab5c033327eb::t_9d72c9a34f54f6 4-10
+Sources/bibi/Services/LLMProvider.swift
+  s_58ab5c033327eb::t_1732b138b8befc 239
+  s_38958f27a95686::t_4d99a97d97d87a 22-23,34-36
+  s_58ab5c033327eb::t_d05c72e0e77f6e 281-282
+  s_58ab5c033327eb::t_ddebae2cfac6ce 104
+  s_58ab5c033327eb::t_c030615e14c45e 205-233
+  s_58ab5c033327eb::t_ad2e66a8047a94 25
+  s_38958f27a95686::t_acdfdd8e35b247 117-122
+  s_58ab5c033327eb::t_4cc768cdde0b63 129
+  s_38958f27a95686::t_941ae66b29093c 52-54
+  s_58ab5c033327eb::t_9a0af07735fd0d 258
+  s_58ab5c033327eb::t_511be91ca903f2 21,33
+  s_58ab5c033327eb::t_20c71fad4c4721 161-173,176-177,184-196
+  s_58ab5c033327eb::t_a964ca9942fa1c 125
+  s_58ab5c033327eb::t_c371f69cdcb992 47,60,66,69-70
+  s_58ab5c033327eb::t_5ec7652cce5bcc 271-272
+  s_58ab5c033327eb::t_28799c419c3eab 204
+Sources/bibi/Views/SettingsView.swift
+  s_38958f27a95686::t_5075c2a46ce129 6-7,19,31,44-48,55-56,59-63,101-110,112-121,123-130,133,135-140,144,146,148-150,153,160-176,182,184,186-204,209-211,218-238,246-262,269,271,273-274,281,283-311,321,323,333,335,339-354,364,409,414,429,452,454-472
+  s_1592418f6fb2d5::t_40bec05ff6ad45 94-98
+  s_1592418f6fb2d5::t_f0d2c2c50e0895 20
+Sources/bibi/Views/AboutAppView.swift
+  s_1a2cdf477d3c3c::t_3d6aa30dd6c752 82-88,91-100,102
+  s_1a2cdf477d3c3c::t_c5907a3aae54a4 62,73-81
+  s_38958f27a95686::t_f4718f6e58c86c 6-7,19-47,49-50,53,111,121,126
+  s_1a2cdf477d3c3c::t_e45b6a83e0016b 59,66
+Sources/bibi/Services/PcToolService.swift
+  s_98cedb1c8313d0::t_9a519b29c48b71 23,31,53,85,103,116,132
+Sources/bibi/Theme/BibiTypography.swift
+  s_58ab5c033327eb::t_c36672eb072dd7 32-46
+  s_58ab5c033327eb::t_4d79403efb6b8f 71-80
+Sources/bibi/Views/SkillsView.swift
+  s_fb3aeb281b3459::t_1ab297dc153865 11,15,22,26,42,48-49,58,96,102,106-107,109-113,121,174
+  s_fb3aeb281b3459::t_bb7ca182b16123 1-10,12-14,16-21,23-25,27-41,43-47,50-57,59-95,97-101,103-105,108,114-120,122-173,175-179
+Package.resolved
+  s_1592418f6fb2d5::t_d323569447fc75 1-78
+Sources/bibi/Models/LocalUser.swift
+  s_58ab5c033327eb::t_b8a5b6e4ae7705 3-9
+xtool.yml
+  s_cf4d27f8ef28ff::t_e04c52db214df8 5
+Sources/bibi/Views/DebugAgentConfigView.swift
+  s_1592418f6fb2d5::t_151e334449ef9a 1-98
+Sources/bibi/Views/ToolsView.swift
+  s_fb3aeb281b3459::t_031e6f6d5a8941 40-43,45-46
+  s_fb3aeb281b3459::t_e42e0228fa9803 18
+  s_fb3aeb281b3459::t_4f0e7f975eaab8 6-7,17,26-27,106-142,145-151
+  s_fb3aeb281b3459::t_58a1f189d7e3b6 143-144,152-157
+  s_58ab5c033327eb::t_f17392a53b1ddb 172
+  s_fb3aeb281b3459::t_c8bd836d9065f9 158-159,180-184,187-203,205-241
+  s_58ab5c033327eb::t_2515a8c936f3bc 100
+  s_fb3aeb281b3459::t_1993531269db1b 185-186
+  s_fb3aeb281b3459::t_d669109e375026 44
+  s_58ab5c033327eb::t_ef49b84f0dfdbe 87
+  s_fb3aeb281b3459::t_4e4c91dd7dff80 204
+Sources/bibi/Components/InputBar.swift
+  s_58ab5c033327eb::t_7bd0f75de228d2 25
+  s_1592418f6fb2d5::t_28696581890fa0 82
+  s_1592418f6fb2d5::t_414e1258dbdd8b 84,89
+  s_58ab5c033327eb::t_4fbc68b3b1adf3 48
+Sources/bibi/Components/ToolRow.swift
+  s_58ab5c033327eb::t_f69fdc473cfa52 24
+  s_fb3aeb281b3459::t_795f293cf365e6 77-79
+Sources/bibi/Services/AppLogger.swift
+  s_98cedb1c8313d0::t_9a519b29c48b71 34,58,92,105,118,137,150,170,192,208
+Sources/bibi/Theme/BibiColor.swift
+  s_58ab5c033327eb::t_4cc85182d51e86 48,50
+Sources/bibi/Utils/AppTheme.swift
+  s_58ab5c033327eb::t_3de5e34558301f 83
+Sources/bibi/Services/ConversationManager.swift
+  s_38958f27a95686::t_8fcc96a49ea45b 136,138,149
+  s_98cedb1c8313d0::t_9a519b29c48b71 20,43,75,82,106,119,130
+  s_58ab5c033327eb::t_ceb23878125aa2 14
+  s_58ab5c033327eb::t_9e3f0962e66a34 83-101
+Sources/bibi/Views/PairingView.swift
+  s_58ab5c033327eb::t_5878f686aa3913 23
+Resources/bibi.entitlements
+  s_cf4d27f8ef28ff::t_3c534abc415259 1-8
+Sources/bibi/Services/CrashBreadcrumbStore.swift
+  s_58ab5c033327eb::t_3b0ef934120aeb 96
+  s_58ab5c033327eb::t_648d464e29cf99 73
+  s_58ab5c033327eb::t_42e5cdffc8093c 84
+  s_58ab5c033327eb::t_b7e1ad738ce501 108-109
+  s_58ab5c033327eb::t_abb089f0c56f8d 123
+  s_58ab5c033327eb::t_affefb998a4100 44
+Sources/bibi/Services/ConnectionManager.swift
+  s_98cedb1c8313d0::t_9a519b29c48b71 46,58,80,92,102,126,172,184,202,215,229,240,252,272,304,312,324,345,363,373
+  s_58ab5c033327eb::t_7da65125e6a436 138
+Sources/bibi/Services/VoiceInputManager.swift
+  s_58ab5c033327eb::t_da428af6e435f1 4-10
+Sources/bibi/Components/EmptyHeroView.swift
+  s_58ab5c033327eb::t_d0c8feb271b5a7 20
+AGENTS.md
+  s_58ab5c033327eb::t_27e9d4b6fefc36 128
+Sources/bibi/Models/AgentLogEntry.swift
+  s_58ab5c033327eb::t_a8c4ebe0f858cc 1-53
+Sources/bibi/Models/AppSetting.swift
+  s_58ab5c033327eb::t_a010a504a5b093 26
+  s_58ab5c033327eb::t_e51fa7c6b50dbd 3-9
+  s_58ab5c033327eb::t_97bc791af6f545 15-21
+  s_38958f27a95686::t_9741bea03fe830 25
+Sources/bibi/ContentView.swift
+  s_98cedb1c8313d0::t_9a519b29c48b71 74,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3b0668870e4a1e08c1bac28e9835d3b210244f84",
+  "prompts": {},
+  "humans": {
+    "h_1d1a3d05761997": {
+      "author": "xiangwei <18573714766@139.com>"
+    }
+  },
+  "sessions": {
+    "s_1592418f6fb2d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_03a4319edffe1hvl9N57GRxnpG",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    },
+    "s_1a2cdf477d3c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_0398495e1ffe6z4OaXrhDgFEpD",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    },
+    "s_38958f27a95686": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_03a772c7fffeVSwPkRRlMPzflX",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    },
+    "s_58ab5c033327eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_04a4ab4aeffesChCXahaSl4eHk",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    },
+    "s_98cedb1c8313d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_04a39d0f5ffenK0Lb64C6NyKcB",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    },
+    "s_cf4d27f8ef28ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_039ad03d0ffeLSLqpgfuaKVKBb",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    },
+    "s_fb3aeb281b3459": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_04912722bffefkeyLUAlp3jH6D",
+        "model": "unknown"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    }
+  }
+}
