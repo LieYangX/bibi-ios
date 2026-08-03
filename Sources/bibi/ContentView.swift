@@ -71,6 +71,7 @@ struct ContentView: View {
 
     /**
      * 跳转到设置页。
+     * @author xiangwei
      */
     private func openSettings() {
         guard navigationPath.last != .settings else { return }
@@ -79,6 +80,7 @@ struct ContentView: View {
 
     /**
      * 关闭工具面板后跳转到设置页。
+     * @author xiangwei
      */
     private func openSettingsFromTools() {
         opensSettingsAfterTools = true

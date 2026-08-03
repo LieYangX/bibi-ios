@@ -20,7 +20,7 @@ struct PairingView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Image(systemName: "desktopcomputer.and.iphone")
-                    .font(.system(size: 34, weight: .semibold))
+                    .font(.bibiLargeTitle)
                     .foregroundStyle(Color.brandGold)
                     .frame(width: 72, height: 72)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))

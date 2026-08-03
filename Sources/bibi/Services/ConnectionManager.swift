@@ -43,6 +43,7 @@ final class ConnectionManager {
 
     /**
      * 初始化
+     * @author xiangwei
      */
     init() {
         bonjourDiscovery.onDeviceFound = { [weak self] device in
@@ -54,6 +55,7 @@ final class ConnectionManager {
 
     /**
      * 开始搜索 PC 设备
+     * @author xiangwei
      */
     func startSearching() {
         cancelSearch()
@@ -75,6 +77,7 @@ final class ConnectionManager {
 
     /**
      * 停止搜索 PC 设备
+     * @author xiangwei
      */
     func stopSearching() {
         cancelSearch()
@@ -86,6 +89,7 @@ final class ConnectionManager {
 
     /**
      * 取消当前搜索和超时计时。
+     * @author xiangwei
      */
     private func cancelSearch() {
         searchTimeoutTask?.cancel()
@@ -95,6 +99,7 @@ final class ConnectionManager {
 
     /**
      * 处理发现的设备
+     * @author xiangwei
      */
     private func handleDeviceFound(_ device: PCDevice) {
         if !discoveredPCs.contains(where: { $0.id == device.id }) {
@@ -118,6 +123,7 @@ final class ConnectionManager {
      *
      * @param pc 目标 PC 设备
      * @param pairingCode 6 位配对码
+     * @author xiangwei
      */
     func connect(to pc: PCDevice, pairingCode: String) async throws {
         guard let baseURL = baseURL(for: pc) else {
@@ -129,7 +135,7 @@ final class ConnectionManager {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let deviceName = await UIDevice.current.name
+        let deviceName = UIDevice.current.name
 
         let body: [String: Any] = [
             "code": pairingCode,
@@ -163,6 +169,7 @@ final class ConnectionManager {
      * 使用已保存的 token 自动重连
      *
      * @param pc 目标 PC 设备
+     * @author xiangwei
      */
     func reconnect(to pc: PCDevice) async throws {
         guard let token = authToken ?? KeychainHelper.shared.readPairingToken() else {
@@ -174,6 +181,7 @@ final class ConnectionManager {
 
     /**
      * 使用指定 token 重连
+     * @author xiangwei
      */
     private func reconnect(to pc: PCDevice, token: String) async {
         authToken = token
@@ -191,6 +199,7 @@ final class ConnectionManager {
 
     /**
      * 断开 PC 连接
+     * @author xiangwei
      */
     func disconnect() {
         stopHealthCheck()
@@ -203,6 +212,7 @@ final class ConnectionManager {
 
     /**
      * 启动心跳检测
+     * @author xiangwei
      */
     func startHealthCheck() {
         stopHealthCheck()
@@ -216,6 +226,7 @@ final class ConnectionManager {
 
     /**
      * 停止心跳检测
+     * @author xiangwei
      */
     func stopHealthCheck() {
         healthCheckTimer?.invalidate()
@@ -226,6 +237,7 @@ final class ConnectionManager {
 
     /**
      * 执行一次心跳检测
+     * @author xiangwei
      */
     private func performHealthCheck() async {
         let isHealthy = await ping()
@@ -237,6 +249,7 @@ final class ConnectionManager {
 
     /**
      * 处理断线
+     * @author xiangwei
      */
     private func handleDisconnect() {
         let deviceName = connectedPC?.name ?? "unknown"
@@ -256,6 +269,7 @@ final class ConnectionManager {
 
     /**
      * 指数退避重连
+     * @author xiangwei
      */
     private func startReconnect() {
         reconnectTask?.cancel()
@@ -287,6 +301,7 @@ final class ConnectionManager {
 
     /**
      * PC 的 HTTP base URL
+     * @author xiangwei
      */
     private func baseURL(for pc: PCDevice) -> URL? {
         URL(string: "http://\(pc.hostName):\(pc.port)")
@@ -294,6 +309,7 @@ final class ConnectionManager {
 
     /**
      * 当前连接 PC 的 HTTP base URL
+     * @author xiangwei
      */
     var baseURL: URL? {
         connectedPC.flatMap { baseURL(for: $0) }
@@ -305,6 +321,7 @@ final class ConnectionManager {
      * @param path 请求路径
      * @param method HTTP 方法
      * @returns 已配置认证信息的 URLRequest
+     * @author xiangwei
      */
     func authenticatedRequest(path: String, method: String = "GET") throws -> URLRequest {
         guard let baseURL = baseURL else {
@@ -325,6 +342,7 @@ final class ConnectionManager {
 
     /**
      * 健康检查 ping
+     * @author xiangwei
      */
     func ping() async -> Bool {
         guard let request = try? authenticatedRequest(path: "api/v1/ping") else {
@@ -342,6 +360,7 @@ final class ConnectionManager {
 
 /**
  * 配对响应
+ * @author xiangwei
  */
 private struct PairResponse: Decodable {
     let success: Bool
@@ -351,6 +370,7 @@ private struct PairResponse: Decodable {
 
 /**
  * 配对数据
+ * @author xiangwei
  */
 private struct PairData: Decodable {
     let token: String

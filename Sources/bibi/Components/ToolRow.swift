@@ -21,7 +21,7 @@ struct ToolRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName ?? tool.name)
-                    .font(.body.weight(.medium))
+                    .font(.bibiBodyMedium)
                     .foregroundStyle(.primary)
 
                 Text(tool.description)
@@ -73,6 +73,9 @@ struct ToolRow: View {
         }
         if tool.name == LocalToolService.batteryStatusToolName {
             return .warningYellow
+        }
+        if tool.name == LocalToolService.healthInfoToolName {
+            return .successGreen
         }
         if LocalToolService.iconName(for: tool.name) != nil {
             return .brandGold

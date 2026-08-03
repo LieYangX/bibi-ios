@@ -3,7 +3,8 @@ import SwiftUI
 /**
  * 应用设置页。
  *
- * 使用独立导航页面承载账户、连接、智能体和外观设置。
+ * 使用与工具页一致的原生列表风格：动态背景、insetGrouped 分组、分类图标行。
+ * 作为导航栈中的整页显示，覆盖账户、连接、智能体和外观设置。
  *
  * @author xiangwei
  */
@@ -15,6 +16,8 @@ struct SettingsView: View {
     @State private var showPairing: PCDevice?
     @State private var userPendingDeletion: LocalUser?
     @State private var deletionError: String?
+    @State private var thinkingEnabled = true
+    @State private var showsDebugConfig = false
     @Environment(ThemeManager.self) private var themeManager
     @Environment(SettingsStore.self) private var settingsStore
     let onDeleteUser: @MainActor (LocalUser) async throws -> Void
@@ -25,6 +28,7 @@ struct SettingsView: View {
      * @param userManager 用户管理器
      * @param connection 连接管理器
      * @param onDeleteUser 删除用户回调
+     * @author xiangwei
      */
     init(
         userManager: UserManager,
@@ -37,22 +41,26 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
-                accountSummary
+        ZStack {
+            AnimatedBackground()
+
+            List {
+                accountSection
                 userSection
                 connectionSection
                 agentSection
                 appearanceSection
                 aboutSection
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 36)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
         }
-        .background(Color.contentBackground.ignoresSafeArea())
         .navigationTitle("设置")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            // 从持久化设置同步思考模式开关状态
+            thinkingEnabled = settingsStore.get(.thinkingEnabled) != "false"
+        }
         .alert("新增用户", isPresented: $showNewUser) {
             TextField("名称", text: $newUserName)
             Button("创建", action: createUser)
@@ -83,186 +91,268 @@ struct SettingsView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
-    }
-
-    private var accountSummary: some View {
-        HStack(spacing: 14) {
-            if let currentUser = userManager.currentLocalUser {
-                UserAvatarView(
-                    name: currentUser.displayName,
-                    color: Color(hex: currentUser.avatarColor),
-                    size: 52
-                )
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(currentUser.displayName)
-                        .font(.bibiTitle)
-                    Text(connectionSummary)
-                        .font(.bibiCaption)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Image(systemName: "person.crop.circle")
-                    .font(.system(size: 44, weight: .light))
-                    .foregroundStyle(.secondary)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("尚未创建用户")
-                        .font(.bibiTitle)
-                    Text("创建本地用户后即可开始对话")
-                        .font(.bibiCaption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer(minLength: 8)
-
-            Circle()
-                .fill(connection.state == .connected ? Color.successGreen : Color.secondary.opacity(0.35))
-                .frame(width: 10, height: 10)
-                .accessibilityLabel(connectionSummary)
+        .sheet(isPresented: $showsDebugConfig) {
+            DebugAgentConfigView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
-        .padding(16)
-        .background(Color.contentCardBackground, in: BibiShape.contentCard)
     }
 
-    private var userSection: some View {
-        SettingsGroup(title: "本地用户", systemImage: "person.2") {
-            if userManager.localUsers.isEmpty {
-                SettingsEmptyRow(text: "还没有本地用户", systemImage: "person.crop.circle.badge.questionmark")
-            }
+    /// 当前账户摘要。
+    private var accountSection: some View {
+        Section {
+            HStack(spacing: 14) {
+                if let currentUser = userManager.currentLocalUser {
+                    UserAvatarView(
+                        name: currentUser.displayName,
+                        color: Color(hex: currentUser.avatarColor),
+                        size: 52
+                    )
 
-            ForEach(Array(userManager.localUsers.enumerated()), id: \.element.id) { index, user in
-                if index > 0 || userManager.localUsers.isEmpty {
-                    Divider()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(currentUser.displayName)
+                            .font(.bibiTitle)
+                        Text(connectionSummary)
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Image(systemName: "person.crop.circle")
+                        .font(.bibiLargeTitle)
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("尚未创建用户")
+                            .font(.bibiTitle)
+                        Text("创建本地用户后即可开始对话")
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                userRow(user)
+
+                Spacer(minLength: 8)
+
+                Circle()
+                    .fill(connection.state == .connected ? Color.successGreen : Color.secondary.opacity(0.35))
+                    .frame(width: 10, height: 10)
+                    .accessibilityLabel(connectionSummary)
+            }
+            .padding(.vertical, 6)
+        }
+    }
+
+    /// 本地用户管理分组。
+    private var userSection: some View {
+        Section("本地用户") {
+            if userManager.localUsers.isEmpty {
+                Label("还没有本地用户", systemImage: "person.crop.circle.badge.questionmark")
+                    .font(.bibiBody)
+                    .foregroundStyle(.secondary)
             }
 
-            if !userManager.localUsers.isEmpty {
-                Divider()
+            ForEach(Array(userManager.localUsers.enumerated()), id: \.element.id) { _, user in
+                userRow(user)
             }
 
             Button {
                 showNewUser = true
             } label: {
-                SettingsActionRow(
-                    title: "新增用户",
-                    subtitle: "创建独立的本地对话空间",
-                    systemImage: "person.crop.circle.badge.plus",
-                    tint: .accentBlue
-                )
+                HStack(spacing: 12) {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                        .categoryIconStyle(color: .accentBlue)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("新增用户")
+                            .font(.bibiBodyMedium)
+                            .foregroundStyle(.primary)
+                        Text("创建独立的本地对话空间")
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
     }
 
+    /// 电脑连接分组。
     private var connectionSection: some View {
-        SettingsGroup(title: "电脑连接", systemImage: "desktopcomputer") {
+        Section("电脑连接") {
             if let pc = connection.connectedPC {
-                SettingsStatusRow(
-                    title: pc.name,
-                    subtitle: "已连接并通过认证",
-                    systemImage: "desktopcomputer",
-                    tint: .successGreen
-                )
-                Divider()
+                HStack(spacing: 12) {
+                    Image(systemName: "desktopcomputer")
+                        .categoryIconStyle(color: .successGreen)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(pc.name)
+                            .font(.bibiBodyMedium)
+                        Text("已连接并通过认证")
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.successGreen)
+                }
+                .padding(.vertical, 4)
+
                 Button("断开连接", role: .destructive) {
                     connection.disconnect()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 13)
             } else {
-                SettingsEmptyRow(text: "尚未连接电脑", systemImage: "desktopcomputer")
+                Label("尚未连接电脑", systemImage: "desktopcomputer")
+                    .font(.bibiBody)
+                    .foregroundStyle(.secondary)
             }
 
             ForEach(connection.discoveredPCs) { pc in
-                Divider()
                 Button {
                     showPairing = pc
                 } label: {
-                    SettingsActionRow(
-                        title: pc.name,
-                        subtitle: "输入配对码连接",
-                        systemImage: "link.badge.plus",
-                        tint: .accentBlue
-                    )
+                    HStack(spacing: 12) {
+                        Image(systemName: "link.badge.plus")
+                            .categoryIconStyle(color: .accentBlue)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(pc.name)
+                                .font(.bibiBodyMedium)
+                                .foregroundStyle(.primary)
+                            Text("输入配对码连接")
+                                .font(.bibiCaption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.bibiCaptionSemibold)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
 
-            Divider()
             Button {
                 connection.startSearching()
             } label: {
-                SettingsActionRow(
-                    title: connection.state == .searching ? "正在搜索" : "重新搜索",
-                    subtitle: "查找同一网络中的笔笔电脑版",
-                    systemImage: "arrow.clockwise",
-                    tint: .accentBlue,
-                    showsDisclosure: false
-                )
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.clockwise")
+                        .categoryIconStyle(color: .accentBlue)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(connection.state == .searching ? "正在搜索" : "重新搜索")
+                            .font(.bibiBodyMedium)
+                            .foregroundStyle(.primary)
+                        Text("查找同一网络中的笔笔电脑版")
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(connection.state == .searching)
         }
     }
 
+    /// 智能体配置分组。
     private var agentSection: some View {
-        SettingsGroup(title: "智能体", systemImage: "sparkles") {
+        Section("智能体") {
             HStack(spacing: 12) {
-                SettingsIcon(systemImage: "key.fill", tint: .warningYellow)
+                Image(systemName: "key.fill")
+                    .categoryIconStyle(color: .warningYellow)
                 SecureField("DeepSeek API Key", text: apiKeyBinding)
                     .font(.bibiBody)
                     .textContentType(.password)
             }
-            .padding(.vertical, 11)
-
-            Divider()
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("默认模式")
+                Text("模型")
                     .font(.bibiCaptionSemibold)
-                Picker("默认模式", selection: defaultModeBinding) {
-                    Text("快速").tag("快速")
-                    Text("专家").tag("专家")
+                Picker("模型", selection: modelBinding) {
+                    ForEach(DeepSeekModel.allCases, id: \.rawValue) { model in
+                        Text(model.displayName).tag(model.rawValue)
+                    }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.vertical, 11)
+
+            Toggle(isOn: thinkingBinding) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("思考模式")
+                        .font(.bibiBody)
+                    Text("回答前先推理，提升准确率，回答更慢")
+                        .font(.bibiCaption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if thinkingEnabled {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("思考强度")
+                        .font(.bibiCaptionSemibold)
+                    Picker("思考强度", selection: reasoningEffortBinding) {
+                        Text("低").tag("low")
+                        Text("高").tag("high")
+                        Text("最高").tag("max")
+                    }
+                    .pickerStyle(.segmented)
+                }
+            }
 
             Text("API Key 仅保存在系统钥匙串中。")
                 .font(.bibiCaption)
                 .foregroundStyle(.secondary)
-                .padding(.bottom, 11)
         }
     }
 
+    /// 外观分组。
     private var appearanceSection: some View {
-        SettingsGroup(title: "外观", systemImage: "circle.lefthalf.filled") {
+        Section("外观") {
             Picker("配色", selection: preferredSchemeBinding) {
                 Text("自动").tag(ThemePreference.system)
                 Text("浅色").tag(ThemePreference.light)
                 Text("深色").tag(ThemePreference.dark)
             }
             .pickerStyle(.segmented)
-            .padding(.vertical, 13)
         }
     }
 
+    /// 应用分组。
     private var aboutSection: some View {
-        SettingsGroup(title: "应用", systemImage: "info.circle") {
+        Section("应用") {
             NavigationLink {
                 AboutAppView()
             } label: {
-                SettingsActionRow(
-                    title: "关于应用",
-                    subtitle: "版本、隐私与诊断信息",
-                    systemImage: "info.circle.fill",
-                    tint: .brandGoldDark
-                )
+                HStack(spacing: 12) {
+                    Image(systemName: "info.circle.fill")
+                        .categoryIconStyle(color: .brandGoldDark)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("关于应用")
+                            .font(.bibiBodyMedium)
+                            .foregroundStyle(.primary)
+                        Text("版本、隐私与诊断信息")
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(.vertical, 4)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -271,6 +361,7 @@ struct SettingsView: View {
      *
      * @param user 本地用户
      * @returns 用户设置行
+     * @author xiangwei
      */
     private func userRow(_ user: LocalUser) -> some View {
         HStack(spacing: 12) {
@@ -315,11 +406,12 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("删除 \(user.displayName)")
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 6)
     }
 
     /**
      * 创建本地用户。
+     * @author xiangwei
      */
     private func createUser() {
         let name = newUserName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -334,6 +426,7 @@ struct SettingsView: View {
      * 删除本地用户。
      *
      * @param user 待删除用户
+     * @author xiangwei
      */
     private func deleteUser(_ user: LocalUser) {
         Task { @MainActor in
@@ -356,10 +449,27 @@ struct SettingsView: View {
         )
     }
 
-    private var defaultModeBinding: Binding<String> {
+    private var modelBinding: Binding<String> {
         Binding(
-            get: { settingsStore.get(.defaultMode) ?? "快速" },
-            set: { settingsStore.set(.defaultMode, value: $0) }
+            get: { settingsStore.get(.llmModel) ?? DeepSeekModel.flash.rawValue },
+            set: { settingsStore.set(.llmModel, value: $0) }
+        )
+    }
+
+    private var thinkingBinding: Binding<Bool> {
+        Binding(
+            get: { thinkingEnabled },
+            set: { newValue in
+                thinkingEnabled = newValue
+                settingsStore.set(.thinkingEnabled, value: newValue ? "true" : "false")
+            }
+        )
+    }
+
+    private var reasoningEffortBinding: Binding<String> {
+        Binding(
+            get: { settingsStore.get(.reasoningEffort) ?? "high" },
+            set: { settingsStore.set(.reasoningEffort, value: $0) }
         )
     }
 
@@ -395,150 +505,5 @@ struct SettingsView: View {
                 }
             }
         )
-    }
-}
-
-/**
- * 设置页分组容器。
- *
- * @author xiangwei
- */
-private struct SettingsGroup<Content: View>: View {
-    let title: String
-    let systemImage: String
-    let content: () -> Content
-
-    /**
-     * 初始化设置分组。
-     *
-     * @param title 分组标题
-     * @param systemImage 分组图标
-     * @param content 分组内容
-     */
-    init(
-        title: String,
-        systemImage: String,
-        @ViewBuilder content: @escaping () -> Content
-    ) {
-        self.title = title
-        self.systemImage = systemImage
-        self.content = content
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Label(title, systemImage: systemImage)
-                .font(.bibiCaptionSemibold)
-                .foregroundStyle(.secondary)
-                .padding(.leading, 2)
-
-            VStack(spacing: 0) {
-                content()
-            }
-            .padding(.horizontal, 14)
-            .background(Color.contentCardBackground, in: BibiShape.contentCard)
-        }
-    }
-}
-
-/**
- * 设置页标准图标。
- *
- * @author xiangwei
- */
-private struct SettingsIcon: View {
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        Image(systemName: systemImage)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(tint)
-            .frame(width: 30, height: 30)
-            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-    }
-}
-
-/**
- * 可操作的设置行。
- *
- * @author xiangwei
- */
-private struct SettingsActionRow: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let tint: Color
-    var showsDisclosure = true
-
-    var body: some View {
-        HStack(spacing: 12) {
-            SettingsIcon(systemImage: systemImage, tint: tint)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .foregroundStyle(.primary)
-                Text(subtitle)
-                    .font(.bibiCaption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 8)
-
-            if showsDisclosure {
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.vertical, 11)
-        .contentShape(Rectangle())
-    }
-}
-
-/**
- * 设置状态行。
- *
- * @author xiangwei
- */
-private struct SettingsStatusRow: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: 12) {
-            SettingsIcon(systemImage: systemImage, tint: tint)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                Text(subtitle)
-                    .font(.bibiCaption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(tint)
-                .accessibilityLabel(subtitle)
-        }
-        .padding(.vertical, 11)
-    }
-}
-
-/**
- * 设置空状态行。
- *
- * @author xiangwei
- */
-private struct SettingsEmptyRow: View {
-    let text: String
-    let systemImage: String
-
-    var body: some View {
-        Label(text, systemImage: systemImage)
-            .font(.bibiBody)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 14)
     }
 }

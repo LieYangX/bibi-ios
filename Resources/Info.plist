@@ -12,5 +12,7 @@
     <string>用于在您明确要求查找联系人时，搜索系统通讯录。</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>用于在您明确询问日程时，读取系统日历中的事件。</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>用于在您询问健康运动数据时，读取系统健康中的步数、心率、睡眠等信息。</string>
 </dict>
 </plist>

@@ -3,7 +3,7 @@ import SwiftUI
 /**
  * 对话消息视图。
  *
- * 用户消息使用紧凑气泡，助手消息使用无头像内容卡片，工具结果作为辅助状态展示。
+ * 用户与助手消息均使用内容卡片样式，通过暖灰/冷灰背景区分身份。
  *
  * @author xiangwei
  */
@@ -13,11 +13,15 @@ struct MessageBubble: View {
     let onCopy: () -> Void
 
     @State private var isAppeared = false
+    @State private var isThinkingAnimating = false
+    @State private var isReasoningExpanded = false
 
     init(message: ChatMessage, isLastInRun: Bool = true, onCopy: @escaping () -> Void) {
         self.message = message
         self.isLastInRun = isLastInRun
         self.onCopy = onCopy
+        // 流式输出期间默认展开思考过程；输出完成或历史消息默认折叠
+        _isReasoningExpanded = State(initialValue: message.isStreaming)
     }
 
     var body: some View {
@@ -30,7 +34,12 @@ struct MessageBubble: View {
             case .user:
                 userMessage
             default:
-                assistantMessage
+                // 空正文且非流式（历史残留的空消息）不渲染气泡
+                if message.text.isEmpty, (message.reasoningContent?.isEmpty ?? true), !message.isStreaming {
+                    EmptyView()
+                } else {
+                    assistantMessage
+                }
             }
         }
         .opacity(isAppeared ? 1 : 0)
@@ -39,11 +48,41 @@ struct MessageBubble: View {
             withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) {
                 isAppeared = true
             }
+            if isEmptyAssistant {
+                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                    isThinkingAnimating = true
+                }
+            }
+        }
+        .onChange(of: message.text) { _, _ in
+            isThinkingAnimating = false
+        }
+        .onChange(of: message.reasoningContent) { _, _ in
+            isThinkingAnimating = false
+        }
+        .onChange(of: message.isStreaming) { _, isStreaming in
+            // 输出完成后自动折叠思考过程
+            if !isStreaming {
+                withAnimation(.smooth(duration: 0.25)) {
+                    isReasoningExpanded = false
+                }
+            }
+        }
+        .onDisappear {
+            isThinkingAnimating = false
         }
     }
 
+    /// 是否为空正文且无推理内容的助手消息（用于展示"思考中"状态）。
+    private var isEmptyAssistant: Bool {
+        message.role == .assistant
+            && message.isStreaming
+            && message.text.isEmpty
+            && (message.reasoningContent?.isEmpty ?? true)
+    }
+
     private var userMessage: some View {
-        HStack(alignment: .bottom) {
+        HStack(alignment: .top) {
             Spacer(minLength: 72)
 
             Text(renderedText)
@@ -52,32 +91,10 @@ struct MessageBubble: View {
                 .lineSpacing(3)
                 .textSelection(.enabled)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .frame(maxWidth: 330, alignment: .leading)
-                .background {
-                    userBubbleShape.fill(Color.userBubbleBackground)
-                }
-                .contextMenu {
-                    copyButton
-                }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
-        .padding(.vertical, isLastInRun ? 5 : 2)
-    }
-
-    private var assistantMessage: some View {
-        HStack(alignment: .top) {
-            Text(renderedText)
-                .font(.bibiAssistant)
-                .foregroundStyle(.primary)
-                .lineSpacing(4)
-                .textSelection(.enabled)
-                .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-                .frame(maxWidth: 560, alignment: .leading)
+                .frame(maxWidth: 330, alignment: .leading)
                 .background(
-                    Color.assistantBubbleBackground,
+                    Color.userBubbleBackground,
                     in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                 )
                 .overlay {
@@ -87,6 +104,47 @@ struct MessageBubble: View {
                 .contextMenu {
                     copyButton
                 }
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.horizontal, 16)
+        .padding(.vertical, isLastInRun ? 6 : 3)
+    }
+
+    private var assistantMessage: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 8) {
+                if let reasoning = trimmedReasoning, !reasoning.isEmpty {
+                    if isReasoningExpanded {
+                        reasoningSection(reasoning)
+                    } else {
+                        reasoningCollapsedBar(reasoning)
+                    }
+                }
+
+                if !message.text.isEmpty {
+                    Text(renderedText)
+                        .font(.bibiAssistant)
+                        .foregroundStyle(.primary)
+                        .lineSpacing(4)
+                        .textSelection(.enabled)
+                } else if isEmptyAssistant {
+                    thinkingIndicator
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: 560, alignment: .leading)
+            .background(
+                Color.assistantBubbleBackground,
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.hairline.opacity(0.65), lineWidth: 0.5)
+            }
+            .contextMenu {
+                copyButton
+            }
 
             Spacer(minLength: 24)
         }
@@ -95,14 +153,147 @@ struct MessageBubble: View {
         .padding(.vertical, isLastInRun ? 6 : 3)
     }
 
+    /**
+     * "思考中"等待状态指示器。
+     *
+     * 三个圆点依次上下跳动，表示智能体正在生成回复。
+     *
+     * @author xiangwei
+     */
+    private var thinkingIndicator: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(Color.secondary.opacity(0.65))
+                    .frame(width: 6, height: 6)
+                    .offset(y: isThinkingAnimating ? -2.5 : 2.5)
+                    .animation(
+                        .easeInOut(duration: 0.45)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.15),
+                        value: isThinkingAnimating
+                    )
+            }
+        }
+        .frame(height: 14)
+    }
+
+    /**
+     * 思考信息弱化展示区。
+     *
+     * 推理内容以更小字号、更低对比度呈现，弱于正文，起到过程可追溯但不喧宾夺主的作用。
+     * 输出完成后由 onChange(of: message.isStreaming) 自动折叠，点击标题栏可手动收起。
+     *
+     * @param reasoning 推理内容
+     * @returns 思考信息视图
+     * @author xiangwei
+     */
+    private func reasoningSection(_ reasoning: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            reasoningHeader
+
+            Text(reasoning)
+                .font(.bibiCaption)
+                .foregroundStyle(.secondary.opacity(0.75))
+                .lineSpacing(2)
+                .textSelection(.enabled)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    /**
+     * 思考过程标题栏。
+     *
+     * 流式输出期间展示"思考中"状态，不可折叠；输出完成后可点击切换展开/收起。
+     *
+     * @returns 思考过程标题栏视图
+     * @author xiangwei
+     */
+    private var reasoningHeader: some View {
+        Button {
+            withAnimation(.smooth(duration: 0.25)) {
+                isReasoningExpanded.toggle()
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Label("思考过程", systemImage: "brain")
+                    .font(.bibiCaption2Medium)
+                    .foregroundStyle(.tertiary)
+
+                if message.isStreaming {
+                    Text("思考中…")
+                        .font(.bibiCaption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer(minLength: 0)
+
+                if !message.isStreaming {
+                    Image(systemName: "chevron.up")
+                        .font(.bibiCaption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    /**
+     * 思考过程折叠态摘要栏。
+     *
+     * 输出完成后展示思考字数摘要，点击可重新展开完整推理内容。
+     *
+     * @param reasoning 推理内容
+     * @returns 折叠态摘要栏视图
+     * @author xiangwei
+     */
+    private func reasoningCollapsedBar(_ reasoning: String) -> some View {
+        Button {
+            withAnimation(.smooth(duration: 0.25)) {
+                isReasoningExpanded = true
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "brain")
+                    .font(.bibiCaption2Medium)
+
+                Text("思考过程 · \(reasoning.count) 字")
+                    .font(.bibiCaption2)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.down")
+                    .font(.bibiCaption2)
+            }
+            .foregroundStyle(.secondary)
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /**
+     * 去除首尾空白后的推理内容。
+     *
+     * @returns 修剪后的推理内容，无内容时为 nil
+     * @author xiangwei
+     */
+    private var trimmedReasoning: String? {
+        message.reasoningContent?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private var toolResult: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: toolResultSucceeded ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .font(.caption2.weight(.medium))
+                .font(.bibiCaption2Medium)
                 .foregroundStyle(toolResultSucceeded ? Color.secondary : Color.errorRed)
 
             Text(message.toolSummary ?? message.text)
-                .font(.caption2)
+                .font(.bibiCaption2)
                 .foregroundStyle(toolResultSucceeded ? .tertiary : .secondary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -128,16 +319,6 @@ struct MessageBubble: View {
         .background(Color.errorRed.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .padding(.horizontal, 20)
         .padding(.vertical, 5)
-    }
-
-    private var userBubbleShape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(
-            topLeadingRadius: 19,
-            bottomLeadingRadius: 19,
-            bottomTrailingRadius: isLastInRun ? 6 : 19,
-            topTrailingRadius: 19,
-            style: .continuous
-        )
     }
 
     private var renderedText: AttributedString {

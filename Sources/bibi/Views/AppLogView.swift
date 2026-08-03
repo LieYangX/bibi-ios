@@ -12,6 +12,7 @@ struct AppLogView: View {
     @State private var loadError: String?
     @State private var exportURL: URL?
     @State private var showsClearConfirmation = false
+    @State private var showsDebugConfig = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,6 +51,13 @@ struct AppLogView: View {
         .searchable(text: $searchText, prompt: "搜索内容或日志编号")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                NavigationLink {
+                    AgentLogView()
+                } label: {
+                    Image(systemName: "cpu")
+                }
+                .accessibilityLabel("智能体日志")
+
                 if let exportURL {
                     ShareLink(item: exportURL) {
                         Image(systemName: "square.and.arrow.up")
@@ -60,6 +68,11 @@ struct AppLogView: View {
                 Menu {
                     Button(action: reload) {
                         Label("刷新", systemImage: "arrow.clockwise")
+                    }
+                    Button {
+                        showsDebugConfig = true
+                    } label: {
+                        Label("调试智能体", systemImage: "ladybug")
                     }
                     Button(role: .destructive) {
                         showsClearConfirmation = true
@@ -91,6 +104,11 @@ struct AppLogView: View {
         } message: {
             Text("清空后无法恢复。")
         }
+        .sheet(isPresented: $showsDebugConfig) {
+            DebugAgentConfigView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     private var filteredEntries: [AppLogEntry] {
@@ -117,6 +135,7 @@ struct AppLogView: View {
 
     /**
      * 触发日志刷新。
+     * @author xiangwei
      */
     private func reload() {
         Task {
@@ -126,6 +145,7 @@ struct AppLogView: View {
 
     /**
      * 加载日志和导出文件。
+     * @author xiangwei
      */
     @MainActor
     private func loadLogs() async {
@@ -139,6 +159,7 @@ struct AppLogView: View {
 
     /**
      * 清空日志并刷新页面。
+     * @author xiangwei
      */
     private func clearLogs() {
         Task { @MainActor in
@@ -191,6 +212,7 @@ private enum LogFilter: String, CaseIterable, Identifiable {
      *
      * @param level 日志等级
      * @returns 是否包含
+     * @author xiangwei
      */
     func includes(_ level: AppLogLevel) -> Bool {
         switch self {
@@ -262,6 +284,7 @@ private struct AppLogEntryRow: View {
      * @param title 明细名称
      * @param value 明细内容
      * @returns 日志明细行
+     * @author xiangwei
      */
     private func logDetail(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {

@@ -22,7 +22,7 @@ struct InputBar: View {
                 Button(action: onVoice) {
                     Label("语音输入", systemImage: "waveform")
                         .labelStyle(.iconOnly)
-                        .font(.body.weight(.semibold))
+                        .font(.bibiButton)
                         .foregroundStyle(.secondary)
                         .frame(width: 36, height: 36)
                 }
@@ -45,7 +45,7 @@ struct InputBar: View {
                 Button(action: isProcessing ? onStop : onSend) {
                     Label(actionLabel, systemImage: actionIcon)
                         .labelStyle(.iconOnly)
-                        .font(.caption.weight(.bold))
+                        .font(.bibiCaptionBold)
                         .foregroundStyle(actionForeground)
                         .frame(width: 36, height: 36)
                         .background(actionBackground, in: Circle())
@@ -79,14 +79,14 @@ struct InputBar: View {
 
     private var actionForeground: Color {
         if isProcessing || canSend {
-            return .black.opacity(0.78)
+            return .white
         }
-        return .tertiaryText
+        return .secondary
     }
 
     private var actionBackground: Color {
         if isProcessing {
-            return .errorRed
+            return .secondary.opacity(0.45)
         }
         return canSend ? .brandGold : Color.secondary.opacity(0.12)
     }

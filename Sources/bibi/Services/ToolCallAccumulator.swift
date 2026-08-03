@@ -14,6 +14,7 @@ struct ToolCallAccumulator {
 
     /**
      * 单个工具调用分片
+     * @author xiangwei
      */
     private struct ToolCallFragment {
         /// 工具调用 ID
@@ -33,6 +34,7 @@ struct ToolCallAccumulator {
      * @param id 工具调用标识（可能为空）
      * @param name 工具名（可能为空）
      * @param arguments 参数 JSON 片段（可能为空）
+     * @author xiangwei
      */
     mutating func append(index: Int, id: String?, name: String?, arguments: String?) {
         if fragments[index] == nil {
@@ -56,6 +58,7 @@ struct ToolCallAccumulator {
      * 构建完整的工具调用列表
      *
      * @returns 已解析的 ToolCall 数组
+     * @author xiangwei
      */
     func buildToolCalls() -> [ToolCall] {
         fragments

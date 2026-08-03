@@ -21,7 +21,9 @@ final class BonjourDiscovery: NSObject, NetServiceBrowserDelegate, NetServiceDel
     private var isSearching = false
 
     /**
-     * 开始搜索 PC 服务
+     * 开始搜索 PC 服务。
+     *
+     * @author xiangwei
      */
     func start() {
         stop()
@@ -31,7 +33,9 @@ final class BonjourDiscovery: NSObject, NetServiceBrowserDelegate, NetServiceDel
     }
 
     /**
-     * 停止搜索
+     * 停止搜索。
+     *
+     * @author xiangwei
      */
     func stop() {
         isSearching = false
@@ -43,7 +47,7 @@ final class BonjourDiscovery: NSObject, NetServiceBrowserDelegate, NetServiceDel
         resolvingServices.removeAll()
     }
 
-    // MARK: - NetServiceBrowserDelegate
+    // MARK: - Bonjour 浏览器代理
 
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
         guard isSearching else { return }
@@ -56,7 +60,7 @@ final class BonjourDiscovery: NSObject, NetServiceBrowserDelegate, NetServiceDel
         // 服务移除时可在此处理
     }
 
-    // MARK: - NetServiceDelegate
+    // MARK: - Bonjour 服务代理
 
     func netServiceDidResolveAddress(_ service: NetService) {
         defer {

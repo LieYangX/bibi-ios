@@ -41,6 +41,7 @@ enum CrashBreadcrumbStore {
      * @param operation 操作分类
      * @param stage 执行阶段
      * @param toolName 工具名称
+     * @author xiangwei
      */
     static func mark(
         traceId: String,
@@ -69,6 +70,7 @@ enum CrashBreadcrumbStore {
      * 清除指定调用链的面包屑。
      *
      * @param traceId 调用链标识
+     * @author xiangwei
      */
     static func clear(traceId: String) {
         guard let breadcrumb = read(), breadcrumb.traceId == traceId else { return }
@@ -79,6 +81,7 @@ enum CrashBreadcrumbStore {
      * 读取并消费上次未完成的操作。
      *
      * @returns 上次未完成的操作记录
+     * @author xiangwei
      */
     static func consumePending() -> CrashBreadcrumb? {
         guard let breadcrumb = read() else { return nil }
@@ -90,6 +93,7 @@ enum CrashBreadcrumbStore {
      * 读取当前面包屑。
      *
      * @returns 当前面包屑
+     * @author xiangwei
      */
     private static func read() -> CrashBreadcrumb? {
         guard let url = try? breadcrumbURL(),
@@ -101,6 +105,8 @@ enum CrashBreadcrumbStore {
 
     /**
      * 删除面包屑文件。
+     *
+     * @author xiangwei
      */
     private static func removeFile() {
         guard let url = try? breadcrumbURL(), FileManager.default.fileExists(atPath: url.path) else {
@@ -114,6 +120,7 @@ enum CrashBreadcrumbStore {
      *
      * @returns 面包屑文件地址
      * @throws 目录创建异常
+     * @author xiangwei
      */
     private static func breadcrumbURL() throws -> URL {
         let fileManager = FileManager.default

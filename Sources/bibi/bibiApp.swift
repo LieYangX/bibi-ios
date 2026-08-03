@@ -54,6 +54,7 @@ struct bibiApp: App {
         let conversations = ConversationManager()
         let pcTools = PcToolService(connection: connection)
         let localTools = LocalToolService()
+        let mcpClient = MCPClient.shared
         let users = UserManager(connection: connection)
         let agent = AgentService(
             connection: connection,
@@ -61,6 +62,7 @@ struct bibiApp: App {
             users: users,
             pcTools: pcTools,
             localTools: localTools,
+            mcpClient: mcpClient,
             settings: settings
         )
 
@@ -72,6 +74,10 @@ struct bibiApp: App {
         _userManager = State(initialValue: users)
         _agentService = State(initialValue: agent)
         agent.initialize()
+
+        users.onUserSwitched = { [weak agent] userId in
+            await agent?.onUserSwitched(to: userId)
+        }
     }
 
     var body: some Scene {

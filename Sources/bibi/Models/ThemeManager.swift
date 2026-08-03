@@ -1,6 +1,12 @@
 import SwiftUI
 
-/// 主题偏好枚举
+/**
+ * 主题偏好枚举。
+ *
+ * 支持跟随系统、浅色、深色三种模式。
+ *
+ * @author xiangwei
+ */
 enum ThemePreference: String, CaseIterable, Codable {
     /// 跟随系统设置
     case system = "跟随系统"
@@ -19,10 +25,13 @@ enum ThemePreference: String, CaseIterable, Codable {
     }
 }
 
-/// 主题管理器
-///
-/// 使用 @Observable 实现响应式主题切换。
-/// 支持系统、浅色、深色三种模式。
+/**
+ * 主题管理器。
+ *
+ * 使用 @Observable 实现响应式主题切换，偏好持久化到 UserDefaults。
+ *
+ * @author xiangwei
+ */
 @Observable
 final class ThemeManager {
     /// 当前主题偏好（持久化到 UserDefaults）

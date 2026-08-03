@@ -31,6 +31,7 @@ actor AppLogger {
 
     /**
      * 初始化日志服务。
+     * @author xiangwei
      */
     private init() {
         let fileManager = FileManager.default
@@ -54,6 +55,7 @@ actor AppLogger {
      * @param message 日志内容
      * @param traceId 调用链标识
      * @param metadata 补充信息
+     * @author xiangwei
      */
     func log(
         _ level: AppLogLevel,
@@ -87,6 +89,7 @@ actor AppLogger {
      *
      * @param limit 最大返回数量
      * @returns 按时间倒序排列的日志记录
+     * @author xiangwei
      */
     func loadEntries(limit: Int = 1_000) throws -> [AppLogEntry] {
         try prepareDirectory()
@@ -99,6 +102,7 @@ actor AppLogger {
      * 清空应用日志。
      *
      * @throws 文件删除异常
+     * @author xiangwei
      */
     func clear() throws {
         for url in [currentLogURL, archivedLogURL] where FileManager.default.fileExists(atPath: url.path) {
@@ -111,6 +115,7 @@ actor AppLogger {
      *
      * @returns 导出文件地址
      * @throws 日志读取或文件写入异常
+     * @author xiangwei
      */
     func makeExportFile() throws -> URL {
         try prepareDirectory()
@@ -129,6 +134,7 @@ actor AppLogger {
      * 准备日志目录。
      *
      * @throws 目录创建异常
+     * @author xiangwei
      */
     private func prepareDirectory() throws {
         try FileManager.default.createDirectory(
@@ -141,6 +147,7 @@ actor AppLogger {
      * 在日志超出大小限制时执行滚动。
      *
      * @throws 文件操作异常
+     * @author xiangwei
      */
     private func rotateIfNeeded() throws {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: currentLogURL.path),
@@ -160,6 +167,7 @@ actor AppLogger {
      *
      * @param entry 日志记录
      * @throws 编码或文件写入异常
+     * @author xiangwei
      */
     private func append(_ entry: AppLogEntry) throws {
         var data = try encoder.encode(entry)
@@ -181,6 +189,7 @@ actor AppLogger {
      *
      * @param url 日志文件地址
      * @returns 可解析的日志记录
+     * @author xiangwei
      */
     private func readEntries(from url: URL) throws -> [AppLogEntry] {
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
@@ -196,6 +205,7 @@ actor AppLogger {
      * @param value 原始文本
      * @param maximumLength 最大字符数
      * @returns 清理后的文本
+     * @author xiangwei
      */
     private func sanitize(_ value: String, maximumLength: Int) -> String {
         let flattened = value

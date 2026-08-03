@@ -1,5 +1,12 @@
 import Foundation
 
+/**
+ * 对话。
+ *
+ * 按归属用户隔离，包含消息计数和时间戳。使用 @Observable 实现响应式。
+ *
+ * @author xiangwei
+ */
 @Observable
 final class Conversation: Identifiable {
     var id: UUID; var title: String; var createdAt: Date; var updatedAt: Date

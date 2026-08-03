@@ -3,11 +3,14 @@ import Foundation
 /**
  * LLM 流式事件
  *
- * 表示 DeepSeek SSE 流中的三种事件类型：文本片段、工具调用分片、结束信号。
+ * 表示 DeepSeek SSE 流中的事件类型：推理内容片段、文本片段、工具调用分片、结束信号。
  *
  * @author xiangwei
  */
 enum LLMStreamEvent {
+    /// 思考模式下的推理内容片段（reasoning_content，不直接展示给用户）
+    case reasoning(String)
+
     /// 文本片段
     case chunk(String)
 
@@ -16,6 +19,29 @@ enum LLMStreamEvent {
 
     /// 流式结束信号
     case finish(reason: String?)
+}
+
+/**
+ * DeepSeek 可用模型
+ *
+ * 对应官方文档 deepseek-v4-flash（快速）与 deepseek-v4-pro（专家）两个模型。
+ *
+ * @author xiangwei
+ */
+enum DeepSeekModel: String, CaseIterable {
+    /// 快速模型
+    case flash = "deepseek-v4-flash"
+
+    /// 专家模型
+    case pro = "deepseek-v4-pro"
+
+    /// 界面展示名称
+    var displayName: String {
+        switch self {
+        case .flash: return "快速 (deepseek-v4-flash)"
+        case .pro: return "专家 (deepseek-v4-pro)"
+        }
+    }
 }
 
 /**
@@ -51,8 +77,8 @@ enum LLMMessage {
     /// 助手纯文本消息
     case assistant(String)
 
-    /// 助手工具调用消息
-    case assistantToolCalls(content: String, toolCalls: [ToolCall])
+    /// 助手工具调用消息（思考模式下需携带 reasoningContent 回传，否则服务端返回 400）
+    case assistantToolCalls(content: String, reasoningContent: String?, toolCalls: [ToolCall])
 
     /// 工具执行结果消息
     case tool(toolCallId: String, content: String)
@@ -73,7 +99,7 @@ enum LLMMessage {
         case .assistant(let text):
             return ["role": "assistant", "content": text]
 
-        case .assistantToolCalls(let content, let toolCalls):
+        case .assistantToolCalls(let content, let reasoningContent, let toolCalls):
             let toolCallsJSON = toolCalls.map { toolCall -> [String: Any] in
                 let argsString = (try? String(
                     data: JSONSerialization.data(withJSONObject: toolCall.arguments),
@@ -99,6 +125,11 @@ enum LLMMessage {
                 result["content"] = content
             } else {
                 result["content"] = NSNull()
+            }
+
+            // 思考模式下工具调用上下文必须回传推理内容，否则服务端返回 400
+            if let reasoningContent, !reasoningContent.isEmpty {
+                result["reasoning_content"] = reasoningContent
             }
 
             return result
@@ -147,6 +178,9 @@ struct StreamChoice: Decodable {
  * @author xiangwei
  */
 struct StreamDelta: Decodable {
+    /// 思考模式下的推理内容片段
+    let reasoningContent: String?
+
     /// 文本内容
     let content: String?
 
@@ -154,6 +188,7 @@ struct StreamDelta: Decodable {
     let toolCalls: [StreamToolCall]?
 
     enum CodingKeys: String, CodingKey {
+        case reasoningContent = "reasoning_content"
         case content
         case toolCalls = "tool_calls"
     }

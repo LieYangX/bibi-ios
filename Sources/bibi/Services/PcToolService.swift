@@ -20,6 +20,7 @@ final class PcToolService {
      * 初始化
      *
      * @param connection 连接管理器
+     * @author xiangwei
      */
     init(connection: ConnectionManager) {
         self.connection = connection
@@ -27,6 +28,7 @@ final class PcToolService {
 
     /**
      * 从 PC 端动态获取可用工具列表
+     * @author xiangwei
      */
     func loadTools() async throws {
         let request = try connection.authenticatedRequest(path: "api/v1/tools")
@@ -48,6 +50,7 @@ final class PcToolService {
      * @param args 参数字典
      * @param traceId 调用链标识
      * @returns 工具执行结果
+     * @author xiangwei
      */
     func execute(
         toolName: String,
@@ -79,6 +82,7 @@ final class PcToolService {
 
     /**
      * 健康检查
+     * @author xiangwei
      */
     @discardableResult
     func ping() async -> Bool {
@@ -96,6 +100,7 @@ final class PcToolService {
 
     /**
      * 断线时清理
+     * @author xiangwei
      */
     func reset() {
         availableTools = []
@@ -108,6 +113,7 @@ final class PcToolService {
      * @param data 响应数据
      * @param operation 操作名称
      * @throws 响应状态异常
+     * @author xiangwei
      */
     private func validate(response: URLResponse, data: Data, operation: String) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -123,6 +129,7 @@ final class PcToolService {
 
 /**
  * 电脑服务通用错误响应。
+ * @author xiangwei
  */
 private struct PcErrorResponse: Decodable {
     /// 错误详情。

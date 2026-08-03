@@ -120,12 +120,6 @@ struct AgentChatView: View {
                         }
                     }
 
-                    if agent.isProcessing {
-                        ThinkingIndicator()
-                            .id("thinking")
-                            .padding(.vertical, 4)
-                    }
-
                     Color.clear
                         .frame(height: 12)
                         .id("bottom")
@@ -144,6 +138,9 @@ struct AgentChatView: View {
                 scrollToBottom(using: proxy)
             }
             .onChange(of: agent.messages.last?.text) { _, _ in
+                scrollToBottom(using: proxy, animated: false)
+            }
+            .onChange(of: agent.messages.last?.reasoningContent) { _, _ in
                 scrollToBottom(using: proxy, animated: false)
             }
             .onChange(of: agent.isProcessing) { _, _ in
@@ -205,16 +202,16 @@ private struct ChatTopBar: View {
             ZStack {
                 if showsTitle {
                     Text("小笔")
-                        .font(.headline.weight(.semibold))
+                        .font(.bibiHeadline)
                         .transition(.opacity.combined(with: .offset(y: 5)))
                 }
 
                 HStack(spacing: 12) {
                     Button(action: onOpenHistory) {
-                        Text("历史")
-                            .font(.body.weight(.medium))
-                            .padding(.horizontal, 17)
-                            .frame(height: 44)
+                        Label("历史对话", systemImage: "bubble.left.and.bubble.right")
+                            .labelStyle(.iconOnly)
+                            .font(.bibiBodyMedium)
+                            .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
                     .glassEffect(.regular.interactive(), in: .capsule)
@@ -232,14 +229,14 @@ private struct ChatTopBar: View {
                     } label: {
                         Label("更多", systemImage: "line.3.horizontal")
                             .labelStyle(.iconOnly)
-                            .font(.title3.weight(.medium))
+                            .font(.bibiBodyMedium)
                             .frame(width: 48, height: 48)
                     }
                     .buttonStyle(.plain)
                     .glassEffect(.regular.interactive(), in: .circle)
                 }
             }
-            .animation(.smooth(duration: 0.22), value: showsTitle)
+            .animation(.smooth(duration: 0.25), value: showsTitle)
         }
         .padding(.horizontal, 12)
         .padding(.top, 4)

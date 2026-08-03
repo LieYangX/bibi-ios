@@ -8,7 +8,7 @@ final class DatabaseManager {
     func open() throws {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        dbQueue = try DatabaseQueue(path: dir.appendingPathComponent("bibi.sqlite").path)
+        dbQueue = try DatabaseQueue(path: dir.appending(path: "bibi.sqlite").path)
         var m = DatabaseMigrator()
         m.registerMigration("v1") { db in
             try db.create(table: "local_user", ifNotExists: true) { t in
@@ -32,6 +32,26 @@ final class DatabaseManager {
                 t.column("key", .text).primaryKey(); t.column("value", .text).notNull(); t.column("updated_at", .datetime).notNull()
             }
         }
+        m.registerMigration("v2") { db in
+            try db.create(table: "agent_log", ifNotExists: true) { t in
+                t.column("id", .text).primaryKey()
+                t.column("trace_id", .text).notNull()
+                t.column("timestamp", .datetime).notNull()
+                t.column("model", .text).notNull()
+                t.column("round_index", .integer).notNull()
+                t.column("status", .text).notNull()
+                t.column("request_json", .text).notNull()
+                t.column("response_json", .text).notNull()
+                t.column("duration_ms", .integer).notNull()
+                t.column("error_message", .text)
+            }
+        }
+        m.registerMigration("v3") { db in
+            // 思考模式推理内容持久化，用于历史对话中弱化展示
+            try db.alter(table: "chat_message_record") { t in
+                t.add(column: "reasoning_content", .text)
+            }
+        }
         try m.migrate(dbQueue!)
     }
     func fetch<T: FetchableRecord & Decodable>(_ sql: String, args: StatementArguments = []) throws -> [T] {
@@ -48,6 +68,7 @@ final class DatabaseManager {
      *
      * @param id 本地用户标识
      * @throws 数据库写入异常
+     * @author xiangwei
      */
     func deleteLocalUserData(id: String) throws {
         guard let q = dbQueue else { return }
@@ -106,5 +127,77 @@ struct ConversationRecord: Codable, FetchableRecord, PersistableRecord {
     static func from(_ c: Conversation) -> Self {
         Self(id: c.id.uuidString, title: c.title, createdAt: c.createdAt, updatedAt: c.updatedAt,
              messageCount: c.messageCount, ownerId: c.ownerId.uuidString)
+    }
+}
+
+/**
+ * 智能体请求日志 GRDB 记录。
+ *
+ * @author xiangwei
+ */
+struct AgentLogRecord: Codable, FetchableRecord, PersistableRecord {
+    let id: String
+    let traceId: String
+    let timestamp: Date
+    let model: String
+    let roundIndex: Int
+    let status: String
+    let requestJSON: String
+    let responseJSON: String
+    let durationMS: Int
+    let errorMessage: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case traceId = "trace_id"
+        case timestamp
+        case model
+        case roundIndex = "round_index"
+        case status
+        case requestJSON = "request_json"
+        case responseJSON = "response_json"
+        case durationMS = "duration_ms"
+        case errorMessage = "error_message"
+    }
+
+    /**
+     * 转为 UI 层使用的模型。
+     *
+     * @returns 智能体日志记录模型
+     */
+    func toEntry() -> AgentLogEntry {
+        AgentLogEntry(
+            id: UUID(uuidString: id) ?? UUID(),
+            traceId: traceId,
+            timestamp: timestamp,
+            model: model,
+            roundIndex: roundIndex,
+            status: AgentLogStatus(rawValue: status) ?? .error,
+            requestJSON: requestJSON,
+            responseJSON: responseJSON,
+            durationMS: durationMS,
+            errorMessage: errorMessage
+        )
+    }
+
+    /**
+     * 从 UI 层模型创建 GRDB 记录。
+     *
+     * @param entry 智能体日志记录模型
+     * @returns GRDB 记录
+     */
+    static func from(_ entry: AgentLogEntry) -> Self {
+        Self(
+            id: entry.id.uuidString,
+            traceId: entry.traceId,
+            timestamp: entry.timestamp,
+            model: entry.model,
+            roundIndex: entry.roundIndex,
+            status: entry.status.rawValue,
+            requestJSON: entry.requestJSON,
+            responseJSON: entry.responseJSON,
+            durationMS: entry.durationMS,
+            errorMessage: entry.errorMessage
+        )
     }
 }

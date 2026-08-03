@@ -9,6 +9,9 @@ final class UserManager {
     private(set) var loading = false; private(set) var error: String?
     private let db = DatabaseManager.shared
     private let connection: ConnectionManager
+    /// 用户切换回调（传入新用户的 ID）。
+    @MainActor var onUserSwitched: ((UUID) async -> Void)?
+
     init(connection: ConnectionManager) { self.connection = connection; loadLocalUsers() }
     private func loadLocalUsers() {
         do {
@@ -50,6 +53,8 @@ final class UserManager {
             logDatabaseError(operation: "切换本地用户", error: error)
         }
         UserDefaults.standard.set(user.id.uuidString, forKey: "last_local_user_id")
+
+        await onUserSwitched?(user.id)
     }
 
     /**
@@ -57,6 +62,7 @@ final class UserManager {
      *
      * @param user 待删除的本地用户
      * @throws 本地数据删除异常
+     * @author xiangwei
      */
     func deleteLocalUser(_ user: LocalUser) async throws {
         let deletesCurrentUser = currentLocalUser?.id == user.id
@@ -108,6 +114,7 @@ final class UserManager {
      *
      * @param operation 数据操作名称
      * @param error 原始异常
+     * @author xiangwei
      */
     private func logDatabaseError(operation: String, error: Error) {
         let errorMessage = error.localizedDescription

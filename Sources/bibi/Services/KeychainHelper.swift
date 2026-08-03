@@ -1,6 +1,13 @@
 import Foundation
 import Security
 
+/**
+ * 密钥存储服务。
+ *
+ * 使用系统 Keychain 安全存储 DeepSeek API Key 和 PC 配对 Token。
+ *
+ * @author xiangwei
+ */
 final class KeychainHelper {
     nonisolated(unsafe) static let shared = KeychainHelper()
     private let service = "com.bibi.ios"

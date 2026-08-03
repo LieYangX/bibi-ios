@@ -10,6 +10,7 @@ struct ChatMessageRecord: Codable, FetchableRecord, PersistableRecord {
     let id: String
     let role: String
     let content: String
+    let reasoningContent: String?
     let createdAt: Date
     let toolName: String?
     let toolArgsJSON: String?
@@ -21,6 +22,7 @@ struct ChatMessageRecord: Codable, FetchableRecord, PersistableRecord {
         case id
         case role
         case content
+        case reasoningContent = "reasoning_content"
         case createdAt = "created_at"
         case toolName = "tool_name"
         case toolArgsJSON = "tool_args_json"
@@ -41,6 +43,7 @@ struct ChatMessageRecord: Codable, FetchableRecord, PersistableRecord {
             text: content,
             timestamp: createdAt
         )
+        message.reasoningContent = reasoningContent
         message.toolName = toolName
         message.toolStatus = toolStatus.flatMap { ToolCallStatus(rawValue: $0) }
         message.toolSummary = toolSummary
@@ -60,6 +63,7 @@ struct ChatMessageRecord: Codable, FetchableRecord, PersistableRecord {
             id: message.id.uuidString,
             role: message.role.rawValue,
             content: message.text,
+            reasoningContent: message.reasoningContent,
             createdAt: message.timestamp,
             toolName: message.toolName,
             toolArgsJSON: encodeToolArguments(message.toolArgs),

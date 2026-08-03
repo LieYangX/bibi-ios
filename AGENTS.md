@@ -125,7 +125,7 @@ Glass 是 iOS 26 **导航层**材质，不做内容层背景：
 - **注释格式**: JavaDoc 风格，方法/类/重要字段必须包含注释，作者 `xiangwei`
 - **注释位置**: 使用行注释（单独一行），禁止尾行注释
 - **状态管理**: 服务层全部使用 `@Observable`，不要用 `@ObservableObject` / `@Published`
-- **单例**: 使用 `nonisolated(unsafe) static let shared` 模式
+- **单例**: 使用 `nonisolated(unsafe) static let shared` 模式（`actor` 类型除外，其 `static let` 自带隔离，不需要 `nonisolated(unsafe)`）
 - **文件头**: 不强制 import 声明，按需导入
 
 ## 注意事项

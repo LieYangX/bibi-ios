@@ -11,14 +11,13 @@ final class ConversationManager {
     private(set) var currentConversationId: UUID?
     private let db = DatabaseManager.shared
 
-    init() {
-        loadAll()
-    }
+    init() {}
 
     /**
      * 加载指定用户的历史对话。
      *
      * @param userId 本地用户标识
+     * @author xiangwei
      */
     func loadConversations(for userId: UUID) {
         let sql = """
@@ -41,6 +40,7 @@ final class ConversationManager {
      * @param title 对话标题
      * @param ownerId 本地用户标识
      * @returns 新对话
+     * @author xiangwei
      */
     @discardableResult
     func createConversation(title: String = "新对话", ownerId: UUID) -> Conversation {
@@ -72,6 +72,7 @@ final class ConversationManager {
      *
      * @param id 对话标识
      * @returns 对话消息
+     * @author xiangwei
      */
     func switchConversation(id: UUID) -> [ChatMessage] {
         currentConversationId = id
@@ -79,9 +80,30 @@ final class ConversationManager {
     }
 
     /**
+     * 重命名对话。
+     *
+     * @param id 对话标识
+     * @param title 新标题
+     * @author xiangwei
+     */
+    func renameConversation(id: UUID, title: String) {
+        let updatedAt = Date()
+        try? db.run(
+            "UPDATE conversation SET title = ?, updated_at = ? WHERE id = ?",
+            args: [title, updatedAt, id.uuidString]
+        )
+        if let conversation = conversations.first(where: { $0.id == id }) {
+            conversation.title = title
+            conversation.updatedAt = updatedAt
+        }
+        conversations.sort { $0.updatedAt > $1.updatedAt }
+    }
+
+    /**
      * 删除对话及其消息。
      *
      * @param id 对话标识
+     * @author xiangwei
      */
     func deleteConversation(id: UUID) {
         try? db.run("DELETE FROM chat_message_record WHERE conversation_id = ?", args: [id.uuidString])
@@ -94,6 +116,7 @@ final class ConversationManager {
 
     /**
      * 清空内存中的会话状态。
+     * @author xiangwei
      */
     func clear() {
         conversations.removeAll()
@@ -104,14 +127,15 @@ final class ConversationManager {
      * 增量追加消息。
      *
      * @param messages 本轮新增消息
+     * @author xiangwei
      */
     func appendMessages(_ messages: [ChatMessage]) {
         guard let conversationId = currentConversationId, !messages.isEmpty else { return }
         let sql = """
             INSERT OR REPLACE INTO chat_message_record(
-                id, role, content, created_at, tool_name,
+                id, role, content, reasoning_content, created_at, tool_name,
                 tool_args_json, tool_status, tool_summary, conversation_id
-            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
         for message in messages {
@@ -122,6 +146,7 @@ final class ConversationManager {
                     record.id,
                     record.role,
                     record.content,
+                    record.reasoningContent ?? .none,
                     record.createdAt,
                     record.toolName ?? .none,
                     record.toolArgsJSON ?? .none,

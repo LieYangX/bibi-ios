@@ -17,7 +17,7 @@ struct EmptyHeroView: View {
             brandMark
 
             Text("你好，\(userName)")
-                .font(.title2.weight(.semibold))
+                .font(.bibiTitle)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
 

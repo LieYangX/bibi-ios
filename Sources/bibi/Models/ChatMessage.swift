@@ -55,6 +55,9 @@ struct ChatMessage: Identifiable {
     /// 文本内容（Markdown）
     var text: String
 
+    /// 思考模式下的推理内容（仅助手消息，非空时弱化展示）
+    var reasoningContent: String?
+
     /// 时间戳
     let timestamp: Date
 
@@ -75,6 +78,8 @@ struct ChatMessage: Identifiable {
 
     /**
      * 初始化消息
+     *
+     * @author xiangwei
      */
     init(
         id: UUID = UUID(),
@@ -92,6 +97,8 @@ struct ChatMessage: Identifiable {
 
     /**
      * 创建用户消息
+     *
+     * @author xiangwei
      */
     static func user(_ text: String) -> ChatMessage {
         ChatMessage(role: .user, text: text)
@@ -99,6 +106,8 @@ struct ChatMessage: Identifiable {
 
     /**
      * 创建助手消息
+     *
+     * @author xiangwei
      */
     static func assistant(_ text: String) -> ChatMessage {
         ChatMessage(role: .assistant, text: text, isStreaming: true)
@@ -106,6 +115,8 @@ struct ChatMessage: Identifiable {
 
     /**
      * 创建系统消息
+     *
+     * @author xiangwei
      */
     static func system(_ text: String) -> ChatMessage {
         ChatMessage(role: .system, text: text)
@@ -113,6 +124,8 @@ struct ChatMessage: Identifiable {
 
     /**
      * 创建工具调用消息
+     *
+     * @author xiangwei
      */
     static func toolCall(name: String, args: [String: Any]) -> ChatMessage {
         var message = ChatMessage(role: .toolCall, text: "")
@@ -124,6 +137,8 @@ struct ChatMessage: Identifiable {
 
     /**
      * 创建工具结果消息
+     *
+     * @author xiangwei
      */
     static func toolResult(name: String, summary: String) -> ChatMessage {
         var message = ChatMessage(role: .toolResult, text: "")

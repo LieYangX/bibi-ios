@@ -80,7 +80,7 @@ struct CategoryIconModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.system(.body, design: .rounded, weight: .semibold))
+            .font(.bibiButton)
             .foregroundStyle(color)
             .frame(width: 38, height: 38)
             .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))

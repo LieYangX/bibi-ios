@@ -45,9 +45,9 @@ extension Color {
 // MARK: - 消息色
 
 extension Color {
-    /// 用户消息气泡背景。
+    /// 用户消息卡片背景（暖灰，与助手冷灰区分）。
     static var userBubbleBackground: Color {
-        Color(uiColor: .systemGray5)
+        Color(uiColor: .systemGray5).mix(with: .brandGold, by: 0.04)
     }
 
     /// 用户消息气泡文字。

@@ -12,11 +12,11 @@ struct ToolCallCard: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: statusIcon)
-                .font(.caption2.weight(.medium))
+                .font(.bibiCaption2Medium)
                 .foregroundStyle(statusColor)
 
             Text(statusText)
-                .font(.caption2)
+                .font(.bibiCaption2)
                 .foregroundStyle(status == .failed ? Color.secondary : Color.secondary.opacity(0.72))
                 .lineLimit(1)
 

@@ -18,7 +18,11 @@ final class LLMProvider {
      * @param tools 工具定义
      * @param stream 是否启用流式响应
      * @param traceId 调用链标识
+     * @param roundIndex 多轮对话轮次（从 1 开始）
+     * @param thinkingEnabled 是否启用思考模式（默认开启）
+     * @param reasoningEffort 思考强度（low / high / max，默认 high）
      * @returns 流式事件序列
+     * @author xiangwei
      */
     static func chat(
         model: String,
@@ -26,7 +30,10 @@ final class LLMProvider {
         messages: [LLMMessage],
         tools: [[String: Any]]?,
         stream: Bool,
-        traceId: String
+        traceId: String,
+        roundIndex: Int = 0,
+        thinkingEnabled: Bool = true,
+        reasoningEffort: String = "high"
     ) -> AsyncThrowingStream<LLMStreamEvent, Error> {
         let (streamSequence, continuation) = AsyncThrowingStream<LLMStreamEvent, Error>.makeStream()
 
@@ -37,23 +44,30 @@ final class LLMProvider {
         }
 
         let bodyData: Data
+        let requestJSON: String
         do {
             var body: [String: Any] = [
                 "model": model,
                 "messages": messages.map { $0.toJSON() },
-                "stream": stream
+                "stream": stream,
+                "thinking": ["type": thinkingEnabled ? "enabled" : "disabled"],
+                "reasoning_effort": reasoningEffort
             ]
             if let tools, !tools.isEmpty {
                 body["tools"] = tools.map { ["type": "function", "function": $0] }
             }
             bodyData = try JSONSerialization.data(withJSONObject: body)
+            requestJSON = String(data: bodyData, encoding: .utf8) ?? "{}"
         } catch {
             continuation.finish(throwing: error)
             return streamSequence
         }
         let messageCount = messages.count
+        let startTime = Date()
 
         Task {
+            var responseChunks: [String] = []
+            var lastError: String?
             await AppLogger.shared.log(
                 .info,
                 category: "llm",
@@ -87,6 +101,7 @@ final class LLMProvider {
                     let json = String(line.dropFirst(6))
 
                     if json == "[DONE]" {
+                        responseChunks.append(json)
                         if !didReceiveFinishReason {
                             continuation.yield(.finish(reason: "stop"))
                         }
@@ -99,11 +114,19 @@ final class LLMProvider {
                         let chunk = try JSONDecoder().decode(StreamChunk.self, from: data)
                         guard let choice = chunk.choices?.first else { continue }
 
+                        // 思考模式：推理内容先行输出，与 content 互斥
+                        if let reasoning = choice.delta?.reasoningContent, !reasoning.isEmpty {
+                            responseChunks.append(json)
+                            continuation.yield(.reasoning(reasoning))
+                        }
+
                         if let text = choice.delta?.content, !text.isEmpty {
                             continuation.yield(.chunk(text))
+                            responseChunks.append(json)
                         }
 
                         if let toolCalls = choice.delta?.toolCalls {
+                            responseChunks.append(json)
                             for toolCall in toolCalls {
                                 continuation.yield(.toolCallDelta(
                                     index: toolCall.index,
@@ -135,14 +158,42 @@ final class LLMProvider {
                     message: "DeepSeek 流式响应结束",
                     traceId: traceId
                 )
+
+                let duration = Int(Date().timeIntervalSince(startTime) * 1000)
+                saveAgentLog(
+                    traceId: traceId,
+                    model: model,
+                    roundIndex: roundIndex,
+                    status: .success,
+                    requestJSON: requestJSON,
+                    responseJSON: "[\n" + responseChunks.joined(separator: ",\n") + "\n]",
+                    durationMS: duration,
+                    errorMessage: nil
+                )
+
                 continuation.finish()
             } catch {
+                lastError = error.localizedDescription
+
                 await AppLogger.shared.log(
                     .error,
                     category: "llm",
                     message: error.localizedDescription,
                     traceId: traceId
                 )
+
+                let duration = Int(Date().timeIntervalSince(startTime) * 1000)
+                saveAgentLog(
+                    traceId: traceId,
+                    model: model,
+                    roundIndex: roundIndex,
+                    status: .error,
+                    requestJSON: requestJSON,
+                    responseJSON: "[\n" + responseChunks.joined(separator: ",\n") + "\n]",
+                    durationMS: duration,
+                    errorMessage: lastError
+                )
+
                 continuation.finish(throwing: error)
             }
         }
@@ -151,10 +202,41 @@ final class LLMProvider {
     }
 
     /**
+     * 保存智能体请求日志。
+     *
+     * @author xiangwei
+     */
+    private static func saveAgentLog(
+        traceId: String,
+        model: String,
+        roundIndex: Int,
+        status: AgentLogStatus,
+        requestJSON: String,
+        responseJSON: String,
+        durationMS: Int,
+        errorMessage: String?
+    ) {
+        let entry = AgentLogEntry(
+            id: UUID(),
+            traceId: traceId,
+            timestamp: Date(),
+            model: model,
+            roundIndex: roundIndex,
+            status: status,
+            requestJSON: requestJSON,
+            responseJSON: responseJSON,
+            durationMS: durationMS,
+            errorMessage: errorMessage
+        )
+        AgentLogger.shared.save(entry)
+    }
+
+    /**
      * 读取错误响应正文。
      *
      * @param bytes 响应字节流
      * @returns 限长后的响应文本
+     * @author xiangwei
      */
     private static func readErrorBody(from bytes: URLSession.AsyncBytes) async throws -> String {
         var result = ""
@@ -173,6 +255,7 @@ final class LLMProvider {
      * @param responseText 响应正文
      * @param statusCode HTTP 状态码
      * @returns 可展示的错误信息
+     * @author xiangwei
      */
     private static func apiErrorMessage(from responseText: String, statusCode: Int) -> String {
         guard let data = responseText.data(using: .utf8),
@@ -185,6 +268,8 @@ final class LLMProvider {
 
 /**
  * DeepSeek 错误响应。
+ *
+ * @author xiangwei
  */
 private struct DeepSeekErrorResponse: Decodable {
     /// 错误内容。
@@ -193,6 +278,8 @@ private struct DeepSeekErrorResponse: Decodable {
 
 /**
  * DeepSeek 错误详情。
+ *
+ * @author xiangwei
  */
 private struct DeepSeekErrorBody: Decodable {
     /// 错误说明。

@@ -3,11 +3,15 @@ import SwiftUI
 /**
  * 历史对话列表。
  *
+ * 按当前用户过滤，右滑修改，左滑删除。
+ *
  * @author xiangwei
  */
 struct ConversationListView: View {
     let agent: AgentService
     @Environment(\.dismiss) private var dismiss
+    @State private var renameTarget: Conversation?
+    @State private var renameText = ""
 
     var body: some View {
         NavigationStack {
@@ -22,19 +26,24 @@ struct ConversationListView: View {
                     )
                 } else {
                     List {
-                        Section {
-                            ForEach(agent.conversations.conversations) { conversation in
-                                conversationRow(conversation)
-                                    .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            agent.deleteConversation(id: conversation.id)
-                                        } label: {
-                                            Label("删除", systemImage: "trash")
-                                        }
+                        ForEach(agent.conversations.conversations) { conversation in
+                            conversationRow(conversation)
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        renameTarget = conversation
+                                        renameText = conversation.title
+                                    } label: {
+                                        Label("修改", systemImage: "pencil")
                                     }
-                            }
-                        } footer: {
-                            Text("共 \(agent.conversations.conversations.count) 个对话")
+                                    .tint(.accentBlue)
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        agent.deleteConversation(id: conversation.id)
+                                    } label: {
+                                        Label("删除", systemImage: "trash")
+                                    }
+                                }
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -42,7 +51,7 @@ struct ConversationListView: View {
                 }
             }
             .navigationTitle("对话记录")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("完成") {
@@ -50,9 +59,22 @@ struct ConversationListView: View {
                     }
                 }
             }
+            .alert("修改标题", isPresented: renameBinding) {
+                TextField("对话标题", text: $renameText)
+                Button("保存") {
+                    if let target = renameTarget, !renameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        agent.renameConversation(id: target.id, title: renameText.trimmingCharacters(in: .whitespacesAndNewlines))
+                    }
+                    renameTarget = nil
+                }
+                Button("取消", role: .cancel) {
+                    renameTarget = nil
+                }
+            }
         }
     }
 
+    /// 对话行，匹配工具页 ToolRow 风格。
     private func conversationRow(_ conversation: Conversation) -> some View {
         Button {
             agent.openConversation(id: conversation.id)
@@ -64,7 +86,7 @@ struct ConversationListView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(conversation.title)
-                        .font(.body.weight(.medium))
+                        .font(.bibiBodyMedium)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
@@ -82,11 +104,25 @@ struct ConversationListView: View {
                 if conversation.id == agent.conversations.currentConversationId {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Color.brandGold)
+                        .font(.caption.weight(.semibold))
                         .accessibilityLabel("当前对话")
                 }
             }
+            .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var renameBinding: Binding<Bool> {
+        Binding(
+            get: { renameTarget != nil },
+            set: { isPresented in
+                if !isPresented {
+                    renameTarget = nil
+                }
+            }
+        )
     }
 }

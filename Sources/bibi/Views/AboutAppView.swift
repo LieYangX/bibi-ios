@@ -3,6 +3,8 @@ import SwiftUI
 /**
  * 关于应用页面。
  *
+ * 使用与工具页一致的原生列表风格：动态背景、insetGrouped 分组。
+ *
  * @author xiangwei
  */
 struct AboutAppView: View {
@@ -14,67 +16,90 @@ struct AboutAppView: View {
     @State private var showsLogs = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                appIdentity
-                informationGroup
-                privacyNotice
+        ZStack {
+            AnimatedBackground()
+
+            List {
+                Section {
+                    appIdentity
+                        .frame(maxWidth: .infinity)
+                }
+                .listRowBackground(Color.clear)
+
+                Section("信息") {
+                    aboutRow(title: "版本", value: versionText)
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: handleVersionTap)
+                    aboutRow(title: "构建", value: buildText)
+                    aboutRow(title: "系统要求", value: "iOS 26 或更高版本")
+                }
+
+                Section("数据与隐私") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("对话与应用日志", systemImage: "lock.shield")
+                            .font(.bibiCaptionSemibold)
+                        Text("对话和应用日志保存在当前设备。位置、联系人和日历仅在你触发对应工具并授权后读取，用于本次智能体回答；日志不会记录 API Key。")
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.vertical, 4)
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 24)
-            .padding(.bottom, 36)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
         }
-        .background(Color.contentBackground.ignoresSafeArea())
         .navigationTitle("关于应用")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .navigationDestination(isPresented: $showsLogs) {
             AppLogView()
         }
     }
 
+    /// 应用标识：品牌图标、名称与标语。
     private var appIdentity: some View {
         VStack(spacing: 12) {
-            Image(systemName: "pencil.and.list.clipboard")
-                .font(.system(size: 42, weight: .semibold))
-                .foregroundStyle(Color.brandGoldDark)
-                .frame(width: 84, height: 84)
-                .background(Color.brandGoldLight, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            brandIcon
 
             Text("笔笔")
                 .font(.bibiLargeTitle)
-            Text("让每一笔都有迹可循")
+            Text("每一笔，都办得妥帖")
                 .font(.bibiCaption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
 
-    private var informationGroup: some View {
-        VStack(spacing: 0) {
-            aboutRow(title: "版本", value: versionText)
-                .contentShape(Rectangle())
-                .onTapGesture(perform: handleVersionTap)
-            Divider()
-            aboutRow(title: "构建", value: buildText)
-            Divider()
-            aboutRow(title: "系统要求", value: "iOS 26 或更高版本")
-        }
-        .padding(.horizontal, 14)
-        .background(Color.contentCardBackground, in: BibiShape.contentCard)
+    /**
+     * 品牌图标。
+     *
+     * 优先从模块资源包加载品牌图标；加载失败时回退到应用图标，避免空白。
+     *
+     * @returns 品牌图标视图
+     * @author xiangwei
+     */
+    private var brandIcon: some View {
+        loadBrandIcon()
+            .resizable()
+            .scaledToFill()
+            .frame(width: 84, height: 84)
+            .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .shadow(color: Color.black.opacity(0.12), radius: 10, y: 5)
+            .accessibilityHidden(true)
     }
 
-    private var privacyNotice: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("数据与隐私", systemImage: "lock.shield")
-                .font(.bibiCaptionSemibold)
-            Text("对话和应用日志保存在当前设备。位置、联系人和日历仅在你触发对应工具并授权后读取，用于本次智能体回答；日志不会记录 API Key。")
-                .font(.bibiCaption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+    /**
+     * 加载品牌图标。
+     *
+     * @returns 品牌图标图片，加载失败时回退到应用图标
+     * @author xiangwei
+     */
+    private func loadBrandIcon() -> Image {
+        if let url = Bundle.module.url(forResource: "icon", withExtension: "png"),
+           let uiImage = UIImage(contentsOfFile: url.path) {
+            return Image(uiImage: uiImage)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color.contentCardBackground, in: BibiShape.contentCard)
+        return Image("AppIcon")
     }
 
     /**
@@ -83,6 +108,7 @@ struct AboutAppView: View {
      * @param title 信息名称
      * @param value 信息值
      * @returns 关于信息行
+     * @author xiangwei
      */
     private func aboutRow(title: String, value: String) -> some View {
         HStack {
@@ -92,11 +118,12 @@ struct AboutAppView: View {
                 .font(.bibiMonospacedCaption)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 14)
+        .padding(.vertical, 4)
     }
 
     /**
      * 处理版本号连续点击并打开诊断日志。
+     * @author xiangwei
      */
     private func handleVersionTap() {
         let now = Date()

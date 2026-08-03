@@ -29,6 +29,21 @@ extension Font {
 
     /// 小号金额与数字。
     static let bibiMonospacedCaption = Font.system(.footnote, design: .monospaced, weight: .medium)
+
+    /// 导航标题。
+    static let bibiHeadline = Font.headline.weight(.semibold)
+
+    /// 强调正文。
+    static let bibiBodyMedium = Font.body.weight(.medium)
+
+    /// 小号辅助说明。
+    static let bibiCaption2 = Font.caption2
+
+    /// 小号强调辅助说明。
+    static let bibiCaption2Medium = Font.caption2.weight(.medium)
+
+    /// 加粗辅助说明。
+    static let bibiCaptionBold = Font.caption.weight(.bold)
 }
 
 // MARK: - 字体便捷修饰符
@@ -52,5 +67,15 @@ extension View {
     /// 应用辅助说明样式。
     func bibiCaptionStyle() -> some View {
         font(.bibiCaption)
+    }
+
+    /// 应用小号辅助说明样式。
+    func bibiCaption2Style() -> some View {
+        font(.bibiCaption2)
+    }
+
+    /// 应用强调正文样式。
+    func bibiBodyMediumStyle() -> some View {
+        font(.bibiBodyMedium)
     }
 }
