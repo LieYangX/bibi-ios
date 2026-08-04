@@ -9,10 +9,14 @@ import SwiftUI
  */
 struct DebugAgentConfigView: View {
     @Environment(SettingsStore.self) private var settingsStore
+    @Environment(ProactiveMessageService.self) private var proactiveService
     @Environment(\.dismiss) private var dismiss
 
     /// 是否展开系统提示词编辑区
     @State private var isPromptExpanded = false
+
+    /// 手动测试发送状态文案
+    @State private var testStatus = ""
 
     var body: some View {
         NavigationStack {
@@ -64,6 +68,29 @@ struct DebugAgentConfigView: View {
                             .foregroundStyle(.tertiary)
                     }
                 }
+
+                Section {
+                    Button {
+                        sendTestProactiveMessage()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "paperplane.fill")
+                                .foregroundStyle(Color.brandGold)
+                            Text("发送测试主动消息")
+                        }
+                        .font(.bibiBodyMedium)
+                    }
+
+                    if !testStatus.isEmpty {
+                        Text(testStatus)
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("主动消息测试")
+                } footer: {
+                    Text("立即生成一条主动消息并写入当前会话，用于验证后台生成与通知链路。")
+                }
             }
             .navigationTitle("调试智能体")
             .navigationBarTitleDisplayMode(.inline)
@@ -74,6 +101,18 @@ struct DebugAgentConfigView: View {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 手动触发主动消息测试。
+     * @author xiangwei
+     */
+    private func sendTestProactiveMessage() {
+        testStatus = "正在生成..."
+        Task { @MainActor in
+            await proactiveService.triggerNow()
+            testStatus = "已触发，请查看会话列表或通知。"
         }
     }
 

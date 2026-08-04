@@ -11,19 +11,25 @@ struct AgentChatView: View {
     private static let titleRevealOffset: CGFloat = 12
 
     @State private var agent: AgentService
+    @State private var voice: VoiceInputManager
     @State private var messageText = ""
     @State private var showConversations = false
-    @State private var showVoiceUnavailable = false
+    @State private var showVoiceError = false
     @State private var showsCompactTitle = false
+    @State private var isAppeared = false
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(ProactiveMessageService.self) private var proactiveService
     let onOpenTools: () -> Void
     let onOpenSettings: () -> Void
 
     init(
         agent: AgentService,
+        voice: VoiceInputManager,
         onOpenTools: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         _agent = State(initialValue: agent)
+        _voice = State(initialValue: voice)
         self.onOpenTools = onOpenTools
         self.onOpenSettings = onOpenSettings
     }
@@ -59,15 +65,40 @@ struct AgentChatView: View {
             .animation(.smooth(duration: 0.25), value: agent.connection.state)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            InputBar(
-                text: $messageText,
-                isProcessing: agent.isProcessing,
-                onSend: { sendMessage(messageText) },
-                onStop: { agent.cancelProcessing() },
-                onVoice: { showVoiceUnavailable = true }
-            )
+            VStack(spacing: 8) {
+                if voice.isRecording {
+                    voiceStatusBar(text: "正在聆听，点击波形按钮结束录音")
+                } else if voice.isCorrecting {
+                    voiceStatusBar(text: "正在矫正识别文字…")
+                }
+
+                InputBar(
+                    text: $messageText,
+                    isProcessing: agent.isProcessing,
+                    isRecording: voice.isRecording,
+                    onSend: { sendMessage(messageText) },
+                    onStop: { agent.cancelProcessing() },
+                    onVoice: toggleVoiceInput
+                )
+            }
+            .animation(.smooth(duration: 0.25), value: voice.isRecording)
+            .animation(.smooth(duration: 0.25), value: voice.isCorrecting)
         }
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            isAppeared = true
+            // 进入聊天窗口：通知主动消息服务，此期间不弹系统通知
+            updateChatVisibility()
+        }
+        .onDisappear {
+            // 离开聊天窗口（切到设置页、工具页等）：后续主动消息改为弹系统通知
+            isAppeared = false
+            updateChatVisibility()
+        }
+        .onChange(of: scenePhase) { _, _ in
+            // app 前后台切换时同步窗口可见状态（根视图不会触发 onAppear/onDisappear）
+            updateChatVisibility()
+        }
         .onChange(of: agent.messages.isEmpty) { _, isEmpty in
             if isEmpty {
                 showsCompactTitle = false
@@ -78,10 +109,10 @@ struct AgentChatView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        .alert("语音输入暂不可用", isPresented: $showVoiceUnavailable) {
+        .alert("语音输入不可用", isPresented: $showVoiceError) {
             Button("好", role: .cancel) { }
         } message: {
-            Text("当前版本尚未接入系统语音转写。")
+            Text(voice.lastError ?? "未知错误")
         }
     }
 
@@ -149,6 +180,14 @@ struct AgentChatView: View {
         }
     }
 
+    /**
+     * 根据"聊天页可见 + app 前台"两个条件同步窗口可见状态。
+     * @author xiangwei
+     */
+    private func updateChatVisibility() {
+        proactiveService.setChatVisible(isAppeared && scenePhase == .active)
+    }
+
     private func isLastInRun(at index: Int) -> Bool {
         let messages = agent.messages
         guard index < messages.count else { return true }
@@ -178,11 +217,86 @@ struct AgentChatView: View {
     private func sendMessage(_ text: String) {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
+        // 发送时停止进行中的录音识别
+        voice.stopRecognition()
         messageText = ""
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         Task { @MainActor in
             await agent.sendMessage(trimmedText)
         }
+    }
+
+    /**
+     * 切换语音输入：录音中则停止，未录音则开始识别。
+     *
+     * @author xiangwei
+     */
+    private func toggleVoiceInput() {
+        if voice.isRecording {
+            voice.stopRecognition()
+        } else {
+            startVoiceInput()
+        }
+    }
+
+    /**
+     * 启动语音识别，将识别文本实时写入输入框，
+     * 识别结束后调用 AI 矫正错字。
+     *
+     * @author xiangwei
+     */
+    private func startVoiceInput() {
+        Task {
+            do {
+                let stream = try await voice.startRecognition()
+                var finalText = ""
+                for await text in stream {
+                    finalText = text
+                    messageText = text
+                }
+                if !finalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    await correctVoiceText(finalText)
+                }
+            } catch {
+                showVoiceError = true
+            }
+        }
+    }
+
+    /**
+     * 调用 AI 矫正语音识别文本中的错字。
+     *
+     * 仅在输入框内容仍为原始识别文本时替换，避免覆盖用户的后续编辑。
+     *
+     * @param original 原始识别文本
+     * @author xiangwei
+     */
+    private func correctVoiceText(_ original: String) async {
+        do {
+            let corrected = try await voice.correctSpeechText(original)
+            if messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+                == original.trimmingCharacters(in: .whitespacesAndNewlines) {
+                messageText = corrected
+            }
+        } catch {
+            // 矫正失败时保留原始识别文本，不打断用户
+        }
+    }
+
+    /**
+     * 录音或矫正中的状态提示条。
+     *
+     * @param text 提示文案
+     * @author xiangwei
+     */
+    private func voiceStatusBar(text: String) -> some View {
+        Label(text, systemImage: "waveform")
+            .font(.bibiCaption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(.thinMaterial, in: Capsule())
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
 }
 

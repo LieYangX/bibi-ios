@@ -16,6 +16,8 @@ final class ConversationManager {
     /**
      * 加载指定用户的历史对话。
      *
+     * 加载后尝试恢复该用户上次打开的会话。
+     *
      * @param userId 本地用户标识
      * @author xiangwei
      */
@@ -29,7 +31,12 @@ final class ConversationManager {
             return
         }
         conversations = records.map { $0.toConversation() }
-        if !conversations.contains(where: { $0.id == currentConversationId }) {
+        // 恢复上次打开的会话（若仍存在）
+        if let lastId = UserDefaults.standard.string(forKey: Self.lastConversationKey(for: userId)),
+           let lastConversationId = UUID(uuidString: lastId),
+           conversations.contains(where: { $0.id == lastConversationId }) {
+            currentConversationId = lastConversationId
+        } else if !conversations.contains(where: { $0.id == currentConversationId }) {
             currentConversationId = nil
         }
     }
@@ -64,11 +71,14 @@ final class ConversationManager {
         )
         conversations.insert(conversation, at: 0)
         currentConversationId = conversation.id
+        persistCurrentConversation(for: ownerId)
         return conversation
     }
 
     /**
      * 切换对话并加载消息。
+     *
+     * 切换后持久化当前会话，便于下次启动恢复。
      *
      * @param id 对话标识
      * @returns 对话消息
@@ -76,6 +86,9 @@ final class ConversationManager {
      */
     func switchConversation(id: UUID) -> [ChatMessage] {
         currentConversationId = id
+        if let conversation = conversations.first(where: { $0.id == id }) {
+            persistCurrentConversation(for: conversation.ownerId)
+        }
         return loadMessages(for: id)
     }
 
@@ -191,5 +204,30 @@ final class ConversationManager {
             return []
         }
         return records.map { $0.toChatMessage() }
+    }
+
+    /**
+     * 持久化指定用户的当前会话标识。
+     *
+     * @param userId 本地用户标识
+     * @author xiangwei
+     */
+    private func persistCurrentConversation(for userId: UUID) {
+        guard let conversationId = currentConversationId else { return }
+        UserDefaults.standard.set(
+            conversationId.uuidString,
+            forKey: Self.lastConversationKey(for: userId)
+        )
+    }
+
+    /**
+     * 生成指定用户的"上次会话"存储键。
+     *
+     * @param userId 本地用户标识
+     * @returns UserDefaults 存储键
+     * @author xiangwei
+     */
+    private static func lastConversationKey(for userId: UUID) -> String {
+        "last_conversation_id_\(userId.uuidString)"
     }
 }

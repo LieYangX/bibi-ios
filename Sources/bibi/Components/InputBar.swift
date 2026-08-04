@@ -10,6 +10,7 @@ import SwiftUI
 struct InputBar: View {
     @Binding var text: String
     let isProcessing: Bool
+    let isRecording: Bool
     let onSend: () -> Void
     let onStop: () -> Void
     let onVoice: () -> Void
@@ -20,14 +21,16 @@ struct InputBar: View {
         GlassEffectContainer(spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
                 Button(action: onVoice) {
-                    Label("语音输入", systemImage: "waveform")
+                    Label(isRecording ? "停止录音" : "语音输入", systemImage: isRecording ? "stop.fill" : "waveform")
                         .labelStyle(.iconOnly)
                         .font(.bibiButton)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isRecording ? .white : .secondary)
                         .frame(width: 36, height: 36)
+                        .background(isRecording ? Color.brandGold : Color.clear, in: Circle())
                 }
                 .buttonStyle(.plain)
                 .disabled(isProcessing)
+                .contentTransition(.symbolEffect(.replace))
 
                 TextField("向小笔提问", text: $text, axis: .vertical)
                     .font(.bibiBody)

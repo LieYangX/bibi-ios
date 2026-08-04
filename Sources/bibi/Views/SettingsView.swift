@@ -20,6 +20,8 @@ struct SettingsView: View {
     @State private var showsDebugConfig = false
     @Environment(ThemeManager.self) private var themeManager
     @Environment(SettingsStore.self) private var settingsStore
+    @Environment(MemoryManager.self) private var memoryManager
+    @Environment(ProactiveMessageService.self) private var proactiveService
     let onDeleteUser: @MainActor (LocalUser) async throws -> Void
 
     /**
@@ -49,6 +51,8 @@ struct SettingsView: View {
                 userSection
                 connectionSection
                 agentSection
+                proactiveSection
+                memorySection
                 appearanceSection
                 aboutSection
             }
@@ -318,6 +322,117 @@ struct SettingsView: View {
         }
     }
 
+    /// 主动消息配置分组。
+    private var proactiveSection: some View {
+        Section("主动消息") {
+            Toggle(isOn: proactiveEnabledBinding) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("允许小笔主动联系你")
+                        .font(.bibiBody)
+                    Text("定时主动发消息，你正在使用时不会打扰")
+                        .font(.bibiCaption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if proactiveEnabledBinding.wrappedValue {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("触发间隔")
+                        .font(.bibiCaptionSemibold)
+                    Stepper(
+                        value: proactiveIntervalBinding,
+                        in: 10...1440,
+                        step: 10
+                    ) {
+                        Text(proactiveIntervalText)
+                            .font(.bibiBody)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 智能体记忆分组。
+    private var memorySection: some View {
+        Section("记忆") {
+            Stepper(
+                value: windowSizeBinding,
+                in: 4...60,
+                step: 2
+            ) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("会话滑动窗口：\(windowSizeBinding.wrappedValue) 条")
+                        .font(.bibiBody)
+                    Text("上下文保留最近消息数，超出部分自动提炼成记忆")
+                        .font(.bibiCaption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            NavigationLink {
+                MemorySoulView()
+            } label: {
+                memoryRow(
+                    icon: "sparkles",
+                    color: .brandGold,
+                    title: "灵魂设定",
+                    subtitle: "小笔的自我认知与说话方式"
+                )
+            }
+
+            NavigationLink {
+                MemoryItemsView(category: .userProfile)
+            } label: {
+                memoryRow(
+                    icon: "person.text.rectangle",
+                    color: .accentBlue,
+                    title: "用户画像",
+                    subtitle: "关于你的信息，共 \(memoryManager.profileItems.count) 条"
+                )
+            }
+
+            NavigationLink {
+                MemoryItemsView(category: .longTerm)
+            } label: {
+                memoryRow(
+                    icon: "brain",
+                    color: .successGreen,
+                    title: "长久记忆",
+                    subtitle: "跨会话记住的事实，共 \(memoryManager.longTermItems.count) 条"
+                )
+            }
+        }
+    }
+
+    /**
+     * 构建记忆分组行。
+     *
+     * @param icon 图标名
+     * @param color 图标颜色
+     * @param title 行标题
+     * @param subtitle 行副标题
+     * @returns 记忆设置行
+     * @author xiangwei
+     */
+    private func memoryRow(icon: String, color: Color, title: String, subtitle: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .categoryIconStyle(color: color)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.bibiBodyMedium)
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.bibiCaption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+
     /// 外观分组。
     private var appearanceSection: some View {
         Section("外观") {
@@ -451,8 +566,8 @@ struct SettingsView: View {
 
     private var modelBinding: Binding<String> {
         Binding(
-            get: { settingsStore.get(.llmModel) ?? DeepSeekModel.flash.rawValue },
-            set: { settingsStore.set(.llmModel, value: $0) }
+            get: { settingsStore.llmModel },
+            set: { settingsStore.llmModel = $0 }
         )
     }
 
@@ -468,9 +583,50 @@ struct SettingsView: View {
 
     private var reasoningEffortBinding: Binding<String> {
         Binding(
-            get: { settingsStore.get(.reasoningEffort) ?? "high" },
-            set: { settingsStore.set(.reasoningEffort, value: $0) }
+            get: { settingsStore.reasoningEffort },
+            set: { settingsStore.reasoningEffort = $0 }
         )
+    }
+
+    private var windowSizeBinding: Binding<Int> {
+        Binding(
+            get: { settingsStore.conversationWindowSize },
+            set: { settingsStore.conversationWindowSize = $0 }
+        )
+    }
+
+    private var proactiveEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { settingsStore.proactiveEnabled },
+            set: { newValue in
+                settingsStore.proactiveEnabled = newValue
+                proactiveService.settingsDidChange()
+            }
+        )
+    }
+
+    private var proactiveIntervalBinding: Binding<Int> {
+        Binding(
+            get: { settingsStore.proactiveIntervalMinutes },
+            set: { newValue in
+                settingsStore.proactiveIntervalMinutes = newValue
+                proactiveService.settingsDidChange()
+            }
+        )
+    }
+
+    /// 触发间隔文案（小时/分钟）。
+    private var proactiveIntervalText: String {
+        let minutes = settingsStore.proactiveIntervalMinutes
+        if minutes % 60 == 0 {
+            return "每 \(minutes / 60) 小时"
+        }
+        if minutes < 60 {
+            return "每 \(minutes) 分钟"
+        }
+        let hours = minutes / 60
+        let remainder = minutes % 60
+        return "每 \(hours) 小时 \(remainder) 分钟"
     }
 
     private var preferredSchemeBinding: Binding<ThemePreference> {

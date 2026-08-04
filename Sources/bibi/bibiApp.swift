@@ -9,6 +9,8 @@ import SwiftUI
  */
 @main
 struct bibiApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
     @State private var connectionManager: ConnectionManager
     @State private var settingsStore: SettingsStore
     @State private var conversationManager: ConversationManager
@@ -16,7 +18,11 @@ struct bibiApp: App {
     @State private var localToolService: LocalToolService
     @State private var userManager: UserManager
     @State private var agentService: AgentService
+    @State private var voiceInput: VoiceInputManager
+    @State private var memoryManager: MemoryManager
     @State private var themeManager = ThemeManager()
+    @State private var notificationManager = NotificationManager.shared
+    @State private var proactiveService = ProactiveMessageService.shared
 
     init() {
         let pendingOperation = CrashBreadcrumbStore.consumePending()
@@ -56,6 +62,8 @@ struct bibiApp: App {
         let localTools = LocalToolService()
         let mcpClient = MCPClient.shared
         let users = UserManager(connection: connection)
+        let memory = MemoryManager()
+        let voice = VoiceInputManager(settings: settings)
         let agent = AgentService(
             connection: connection,
             conversations: conversations,
@@ -63,7 +71,8 @@ struct bibiApp: App {
             pcTools: pcTools,
             localTools: localTools,
             mcpClient: mcpClient,
-            settings: settings
+            settings: settings,
+            memory: memory
         )
 
         _connectionManager = State(initialValue: connection)
@@ -73,7 +82,12 @@ struct bibiApp: App {
         _localToolService = State(initialValue: localTools)
         _userManager = State(initialValue: users)
         _agentService = State(initialValue: agent)
+        _voiceInput = State(initialValue: voice)
+        _memoryManager = State(initialValue: memory)
         agent.initialize()
+        // 注入主动消息服务依赖并启动调度
+        proactiveService.configure(agent: agent, settings: settings)
+        proactiveService.start()
 
         users.onUserSwitched = { [weak agent] userId in
             await agent?.onUserSwitched(to: userId)
@@ -84,6 +98,7 @@ struct bibiApp: App {
         WindowGroup {
             ContentView(
                 agent: agentService,
+                voice: voiceInput,
                 connection: connectionManager,
                 userManager: userManager,
                 pcTools: pcToolService,
@@ -94,8 +109,18 @@ struct bibiApp: App {
             .environment(conversationManager)
             .environment(pcToolService)
             .environment(settingsStore)
+            .environment(memoryManager)
             .environment(themeManager)
+            .environment(notificationManager)
+            .environment(proactiveService)
             .preferredColorScheme(themeManager.preferredScheme.toColorScheme)
+            .task {
+                // 启动时申请通知授权
+                await notificationManager.requestAuthorization()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                proactiveService.handleScenePhase(newPhase)
+            }
         }
     }
 }

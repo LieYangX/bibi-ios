@@ -543,15 +543,7 @@ final class LocalToolService {
         case .authorized, .limited:
             return
         case .notDetermined:
-            let granted: Bool = try await withCheckedThrowingContinuation { continuation in
-                contactStore.requestAccess(for: .contacts) { granted, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(returning: granted)
-                    }
-                }
-            }
+            let granted = try await Self.requestContactsAccess()
             guard granted else {
                 throw LocalToolError.permissionDenied("通讯录")
             }
@@ -573,15 +565,7 @@ final class LocalToolService {
         case .authorized, .fullAccess:
             return
         case .notDetermined:
-            let granted: Bool = try await withCheckedThrowingContinuation { continuation in
-                eventStore.requestFullAccessToEvents { granted, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(returning: granted)
-                    }
-                }
-            }
+            let granted = try await Self.requestCalendarAccess()
             guard granted else {
                 throw LocalToolError.permissionDenied("日历")
             }
@@ -699,23 +683,12 @@ final class LocalToolService {
             return nil
         }
 
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
-
-        return await withCheckedContinuation { continuation in
-            let query = HKStatisticsQuery(
-                quantityType: quantityType,
-                quantitySamplePredicate: predicate,
-                options: .cumulativeSum
-            ) { _, result, error in
-                guard let result, error == nil else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                let value = result.sumQuantity()?.doubleValue(for: unit)
-                continuation.resume(returning: value)
-            }
-            healthStore.execute(query)
-        }
+        return await Self.queryStatisticsSum(
+            quantityType: quantityType,
+            start: start,
+            end: end,
+            unit: unit
+        )
     }
 
     /**
@@ -734,24 +707,7 @@ final class LocalToolService {
             return nil
         }
 
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-
-        return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: quantityType,
-                predicate: nil,
-                limit: 1,
-                sortDescriptors: [sortDescriptor]
-            ) { _, samples, error in
-                guard let sample = samples?.first as? HKQuantitySample, error == nil else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                let value = sample.quantity.doubleValue(for: unit)
-                continuation.resume(returning: value)
-            }
-            healthStore.execute(query)
-        }
+        return await Self.queryLatestQuantitySample(quantityType: quantityType, unit: unit)
     }
 
     /**
@@ -767,28 +723,7 @@ final class LocalToolService {
             return nil
         }
 
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-
-        return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: sleepType,
-                predicate: predicate,
-                limit: HKObjectQueryNoLimit,
-                sortDescriptors: [sortDescriptor]
-            ) { _, samples, error in
-                guard let samples = samples as? [HKCategorySample], error == nil else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                let inBedSamples = samples.filter {
-                    $0.value == HKCategoryValueSleepAnalysis.inBed.rawValue
-                }
-                let total = inBedSamples.reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
-                continuation.resume(returning: total)
-            }
-            healthStore.execute(query)
-        }
+        return await Self.querySleepDuration(categoryType: sleepType, start: start, end: end)
     }
 
     /**
@@ -864,6 +799,156 @@ final class LocalToolService {
             return "已充满"
         @unknown default:
             return "未知"
+        }
+    }
+
+    /**
+     * 请求通讯录访问权限。
+     *
+     * nonisolated：continuation 不关联 MainActor，系统回调（后台线程）可直接 resume，
+     * 避免 iOS 26 隔离断言崩溃。授权为应用级状态，新建实例功能等价。
+     *
+     * @return 是否已授权
+     * @throws 系统返回的授权错误
+     * @author xiangwei
+     */
+    private nonisolated static func requestContactsAccess() async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            CNContactStore().requestAccess(for: .contacts) { granted, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: granted)
+                }
+            }
+        }
+    }
+
+    /**
+     * 请求日历完整访问权限。
+     *
+     * nonisolated：同上，避免后台线程 resume 触发隔离断言崩溃。
+     *
+     * @return 是否已授权
+     * @throws 系统返回的授权错误
+     * @author xiangwei
+     */
+    private nonisolated static func requestCalendarAccess() async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            EKEventStore().requestFullAccessToEvents { granted, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: granted)
+                }
+            }
+        }
+    }
+
+    /**
+     * 查询健康数据累计值。
+     *
+     * nonisolated：查询回调在后台线程执行，continuation 不关联 MainActor 可直接 resume。
+     *
+     * @param quantityType 数量类型
+     * @param start 查询起始时间
+     * @param end 查询结束时间
+     * @param unit 数据单位
+     * @returns 累计值，查询失败时返回空
+     * @author xiangwei
+     */
+    private nonisolated static func queryStatisticsSum(
+        quantityType: HKQuantityType,
+        start: Date,
+        end: Date,
+        unit: HKUnit
+    ) async -> Double? {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: quantityType,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, result, error in
+                guard let result, error == nil else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: result.sumQuantity()?.doubleValue(for: unit))
+            }
+            HKHealthStore().execute(query)
+        }
+    }
+
+    /**
+     * 查询最近一条数量样本（心率、静息心率等）。
+     *
+     * nonisolated：同上。
+     *
+     * @param quantityType 数量类型
+     * @param unit 数据单位
+     * @returns 最近一次采样值，查询失败时返回空
+     * @author xiangwei
+     */
+    private nonisolated static func queryLatestQuantitySample(
+        quantityType: HKQuantityType,
+        unit: HKUnit
+    ) async -> Double? {
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: quantityType,
+                predicate: nil,
+                limit: 1,
+                sortDescriptors: [sortDescriptor]
+            ) { _, samples, error in
+                guard error == nil, let sample = samples?.first as? HKQuantitySample else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: sample.quantity.doubleValue(for: unit))
+            }
+            HKHealthStore().execute(query)
+        }
+    }
+
+    /**
+     * 查询睡眠时长。
+     *
+     * nonisolated：同上。
+     *
+     * @param categoryType 睡眠类别类型
+     * @param start 查询起始时间
+     * @param end 查询结束时间
+     * @returns 卧床总时长（秒），查询失败时返回空
+     * @author xiangwei
+     */
+    private nonisolated static func querySleepDuration(
+        categoryType: HKCategoryType,
+        start: Date,
+        end: Date
+    ) async -> TimeInterval? {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: categoryType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sortDescriptor]
+            ) { _, samples, error in
+                guard error == nil, let samples = samples as? [HKCategorySample] else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                let inBedSamples = samples.filter {
+                    $0.value == HKCategoryValueSleepAnalysis.inBed.rawValue
+                }
+                continuation.resume(
+                    returning: inBedSamples.reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+                )
+            }
+            HKHealthStore().execute(query)
         }
     }
 }

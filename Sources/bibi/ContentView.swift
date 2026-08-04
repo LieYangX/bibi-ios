@@ -9,6 +9,7 @@ import SwiftUI
  */
 struct ContentView: View {
     let agent: AgentService
+    let voice: VoiceInputManager
     let connection: ConnectionManager
     let userManager: UserManager
     let pcTools: PcToolService
@@ -22,6 +23,7 @@ struct ContentView: View {
         NavigationStack(path: $navigationPath) {
             AgentChatView(
                 agent: agent,
+                voice: voice,
                 onOpenTools: { showsTools = true },
                 onOpenSettings: openSettings
             )

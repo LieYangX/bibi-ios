@@ -52,6 +52,20 @@ final class DatabaseManager {
                 t.add(column: "reasoning_content", .text)
             }
         }
+        m.registerMigration("v4") { db in
+            // 智能体记忆表：灵魂设定（soul）/ 用户画像（user_profile）/ 长久记忆（long_term）
+            try db.create(table: "memory_item", ifNotExists: true) { t in
+                t.column("id", .text).primaryKey()
+                t.column("owner_id", .text).notNull()
+                t.column("category", .text).notNull()
+                t.column("content", .text).notNull()
+                t.column("importance", .double).notNull().defaults(to: 0.5)
+                t.column("created_at", .datetime).notNull()
+                t.column("updated_at", .datetime).notNull()
+            }
+            // 按用户与类别建立查询索引，加快记忆注入时的读取
+            try db.create(indexOn: "memory_item", columns: ["owner_id", "category"])
+        }
         try m.migrate(dbQueue!)
     }
     func fetch<T: FetchableRecord & Decodable>(_ sql: String, args: StatementArguments = []) throws -> [T] {
@@ -88,6 +102,11 @@ final class DatabaseManager {
             )
             try db.execute(
                 sql: "DELETE FROM local_user WHERE id = ?",
+                arguments: [id]
+            )
+            // 同步清理该用户的全部智能体记忆
+            try db.execute(
+                sql: "DELETE FROM memory_item WHERE owner_id = ?",
                 arguments: [id]
             )
         }

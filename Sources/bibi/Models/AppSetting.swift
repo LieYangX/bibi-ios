@@ -24,4 +24,7 @@ enum SettingKey: String {
     case lastPcDeviceId = "last_pc_device_id"; case llmModel = "llm_model"
     case thinkingEnabled = "thinking_enabled"; case reasoningEffort = "reasoning_effort"
     case debugEnabled = "debug_enabled"; case customSystemPrompt = "custom_system_prompt"
+    case conversationWindowSize = "conversation_window_size"
+    case proactiveEnabled = "proactive_enabled"; case proactiveIntervalMinutes = "proactive_interval_minutes"
+    case lastProactiveAt = "last_proactive_at"
 }

@@ -14,5 +14,17 @@
     <string>用于在您明确询问日程时，读取系统日历中的事件。</string>
     <key>NSHealthShareUsageDescription</key>
     <string>用于在您询问健康运动数据时，读取系统健康中的步数、心率、睡眠等信息。</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>用于将您的语音指令实时转写为文字，方便向小笔提问。</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>用于在您使用语音输入时，录制并识别您的声音。</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.bibi.proactiveMessage</string>
+    </array>
 </dict>
 </plist>
