@@ -59,13 +59,6 @@ nav{
 .nav-links{display:flex;gap:26px;align-items:center}
 .nav-links a{color:var(--ink-dim);text-decoration:none;font-size:13.5px;letter-spacing:.06em;transition:color .25s}
 .nav-links a:hover{color:var(--r-6)}
-.nav-gh{
-  font-size:13px;color:#fff;text-decoration:none;
-  background:var(--rainbow);padding:8px 18px;border-radius:9px;font-weight:700;letter-spacing:.04em;
-  transition:transform .25s,box-shadow .25s;
-  box-shadow:0 4px 16px rgba(91,141,239,.25);
-}
-.nav-gh:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(91,141,239,.38)}
 
 /* ── Hero ─────────────────────────── */
 .hero{padding:96px 0 80px}
@@ -254,7 +247,7 @@ footer a:hover{color:var(--r-6)}
 /* ── 手机端优化 ───────────────────── */
 @media(max-width:640px){
   .wrap{padding:0 20px}
-  .nav-links a:not(.nav-gh){display:none}
+  .nav-links a{display:none}
   .hero{padding:60px 0 52px}
   .hero-grid{gap:40px}
   .hero h1{font-size:clamp(30px,9vw,40px)}
@@ -285,7 +278,6 @@ footer a:hover{color:var(--r-6)}
       <a href="#features">功能</a>
       <a href="#shots">界面</a>
       <a href="#arch">联动</a>
-      <a class="nav-gh" href="https://github.com/LieYangX/bibi-ios" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
   </div>
 </nav>
