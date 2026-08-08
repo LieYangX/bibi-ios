@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var newUserName = ""
     @State private var showNewUser = false
     @State private var showPairing: PCDevice?
+    @State private var showManualConnection = false
     @State private var userPendingDeletion: LocalUser?
     @State private var deletionError: String?
     @State private var thinkingEnabled = true
@@ -92,6 +93,11 @@ struct SettingsView: View {
         }
         .sheet(item: $showPairing) { pc in
             PairingView(pc: pc, connection: connection, onConnected: {})
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showManualConnection) {
+            ManualConnectionView(connection: connection, onConnected: {})
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
@@ -244,6 +250,20 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
             }
 
+            // 搜索结束且未发现任何设备时，给出可操作的排查提示
+            if connection.state == .disconnected && connection.discoveredPCs.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("未找到笔笔电脑版", systemImage: "wifi.exclamationmark")
+                        .font(.bibiBodyMedium)
+                        .foregroundStyle(.primary)
+                    Text("请确认：电脑端已开启「笔笔电脑版」服务，手机与电脑连接同一 Wi-Fi，且电脑防火墙已放行 19878 端口。")
+                        .font(.bibiCaption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 4)
+            }
+
             Button {
                 connection.startSearching()
             } label: {
@@ -255,7 +275,7 @@ struct SettingsView: View {
                         Text(connection.state == .searching ? "正在搜索" : "重新搜索")
                             .font(.bibiBodyMedium)
                             .foregroundStyle(.primary)
-                        Text("查找同一网络中的星枢电脑版")
+                        Text("查找同一网络中的笔笔电脑版")
                             .font(.bibiCaption)
                             .foregroundStyle(.secondary)
                     }
@@ -267,6 +287,33 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
             .disabled(connection.state == .searching)
+
+            Button {
+                showManualConnection = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "network")
+                        .categoryIconStyle(color: .accentBlue)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("手动输入 IP 连接")
+                            .font(.bibiBodyMedium)
+                            .foregroundStyle(.primary)
+                        Text("搜索不到时手动连接，可先测试是否访问的通")
+                            .font(.bibiCaption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.bibiCaptionSemibold)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
     }
 

@@ -51,16 +51,16 @@ $projectDir = "/home/lieyang/ios-project/bibi"
 
 switch ($Command) {
     "clean" {
-        wsl bash -c "cd $projectDir && export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015 && rm -rf .build xtool/.build && xtool build"
+        wsl bash -lc "cd $projectDir && export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015 && rm -rf .build xtool/.build && xtool dev build"
     }
     "build" {
-        wsl bash -c "cd $projectDir && export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015 && xtool build"
+        wsl bash -lc "cd $projectDir && export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015 && xtool dev build"
     }
     "dev" {
-        wsl bash -c "cd $projectDir && export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015 && xtool dev"
+        wsl bash -lc "cd $projectDir && export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015 && xtool dev"
     }
     "install" {
-        wsl bash -c "cd $projectDir && export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015 && xtool install xtool/bibi.ipa --usb"
+        wsl bash -lc "cd $projectDir && export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015 && xtool dev build --ipa && xtool install xtool/bibi.ipa --usb"
     }
 }
 

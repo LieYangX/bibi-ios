@@ -49,6 +49,12 @@ final class ConnectionManager {
         bonjourDiscovery.onDeviceFound = { [weak self] device in
             self?.handleDeviceFound(device)
         }
+        bonjourDiscovery.onDeviceRemoved = { [weak self] serviceName in
+            self?.handleDeviceRemoved(serviceName)
+        }
+        bonjourDiscovery.onSearchFailed = { [weak self] error in
+            self?.handleSearchFailed(error)
+        }
     }
 
     // MARK: - Bonjour 发现
@@ -99,10 +105,20 @@ final class ConnectionManager {
 
     /**
      * 处理发现的设备
+     *
+     * 已存在同名设备时刷新其地址信息（服务重启后 IP 可能变化）。
+     *
+     * @param device 新发现的 PC 设备
      * @author xiangwei
      */
     private func handleDeviceFound(_ device: PCDevice) {
-        if !discoveredPCs.contains(where: { $0.id == device.id }) {
+        if let index = discoveredPCs.firstIndex(where: { $0.id == device.id }) {
+            // 地址有变化时替换，保持设备列表实时准确
+            if discoveredPCs[index].ipAddress != device.ipAddress
+                || discoveredPCs[index].hostName != device.hostName {
+                discoveredPCs[index] = device
+            }
+        } else {
             discoveredPCs.append(device)
         }
 
@@ -113,6 +129,39 @@ final class ConnectionManager {
             Task {
                 await reconnect(to: device, token: token)
             }
+        }
+    }
+
+    /**
+     * 处理设备下线
+     *
+     * @param serviceName 下线的 Bonjour 服务名
+     * @author xiangwei
+     */
+    private func handleDeviceRemoved(_ serviceName: String) {
+        discoveredPCs.removeAll { $0.id == serviceName }
+
+        // 当前连接的设备下线，按断线处理并自动重连
+        if connectedPC?.id == serviceName {
+            handleDisconnect()
+        }
+    }
+
+    /**
+     * 处理搜索失败（如本地网络权限受限）
+     *
+     * @param error 搜索错误
+     * @author xiangwei
+     */
+    private func handleSearchFailed(_ error: Error?) {
+        state = .disconnected
+        Task {
+            await AppLogger.shared.log(
+                .error,
+                category: "connection",
+                message: "局域网搜索失败，请检查本地网络权限",
+                metadata: error.map { ["error": "\($0)"] } ?? [:]
+            )
         }
     }
 
@@ -181,18 +230,24 @@ final class ConnectionManager {
 
     /**
      * 使用指定 token 重连
+     *
+     * 先挂上目标设备再 ping，否则 authenticatedRequest 拿不到 baseURL 会直接失败。
+     *
+     * @param pc 目标 PC 设备
+     * @param token 配对 token
      * @author xiangwei
      */
     private func reconnect(to pc: PCDevice, token: String) async {
         authToken = token
+        connectedPC = pc
 
         if await ping() {
-            connectedPC = pc
             lastConnectedDeviceId = pc.id
             cancelSearch()
             state = .connected
             startHealthCheck()
         } else {
+            connectedPC = nil
             state = .disconnected
         }
     }
@@ -269,6 +324,8 @@ final class ConnectionManager {
 
     /**
      * 指数退避重连
+     *
+     * 设备从列表中消失时重新发起局域网搜索，等设备重新出现后继续重连。
      * @author xiangwei
      */
     private func startReconnect() {
@@ -276,13 +333,25 @@ final class ConnectionManager {
         reconnectTask = Task {
             var delay: UInt64 = 1_000_000_000
             let maxDelay: UInt64 = 30_000_000_000
+            var searchRetried = false
 
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: delay)
 
-                guard let lastId = lastConnectedDeviceId,
-                      let pc = discoveredPCs.first(where: { $0.id == lastId }),
-                      let token = authToken ?? KeychainHelper.shared.readPairingToken() else {
+                guard let lastId = lastConnectedDeviceId else {
+                    continue
+                }
+
+                // 设备已从发现列表消失，重新发起搜索
+                guard let pc = discoveredPCs.first(where: { $0.id == lastId }) else {
+                    if !searchRetried {
+                        searchRetried = true
+                        startSearching()
+                    }
+                    continue
+                }
+
+                guard let token = authToken ?? KeychainHelper.shared.readPairingToken() else {
                     continue
                 }
 
@@ -301,10 +370,18 @@ final class ConnectionManager {
 
     /**
      * PC 的 HTTP base URL
+     *
+     * 优先使用 Bonjour 解析出的直连 IP，避免 .local 域名解析失败；
+     * IPv6 地址需加方括号才能构造合法 URL。
+     *
+     * @param pc PC 设备
+     * @returns HTTP base URL
      * @author xiangwei
      */
     private func baseURL(for pc: PCDevice) -> URL? {
-        URL(string: "http://\(pc.hostName):\(pc.port)")
+        let host = pc.ipAddress ?? pc.hostName
+        let formattedHost = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
+        return URL(string: "http://\(formattedHost):\(pc.port)")
     }
 
     /**
@@ -356,6 +433,94 @@ final class ConnectionManager {
 
         return httpResponse.statusCode == 200
     }
+
+    /**
+     * 手动测试指定 IP 的连通性
+     *
+     * 用于 Bonjour 发现不到设备时排查网络问题。
+     * 只要收到 HTTP 响应即视为可达（401/403 表示服务在但需要配对认证），
+     * 只有网络层错误（超时、连接被拒、ATS 拦截）才视为不可达。
+     *
+     * @param ip 目标 IP 地址
+     * @param port 目标端口（默认 19878）
+     * @returns 连通性测试结果
+     * @author xiangwei
+     */
+    func testConnection(ip: String, port: Int = 19878) async -> ConnectionProbeResult {
+        let host = ip.contains(":") && !ip.hasPrefix("[") ? "[\(ip)]" : ip
+        guard let url = URL(string: "http://\(host):\(port)/api/v1/ping") else {
+            return ConnectionProbeResult(reachable: false, message: "IP 地址格式不正确")
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return ConnectionProbeResult(reachable: false, message: "响应格式不正确")
+            }
+
+            switch httpResponse.statusCode {
+            case 200..<300:
+                return ConnectionProbeResult(reachable: true, message: "连接成功，服务正常")
+            case 401, 403:
+                return ConnectionProbeResult(reachable: true, message: "连接成功，服务需要配对认证，输入配对码即可连接")
+            default:
+                return ConnectionProbeResult(reachable: true, message: "连接成功，服务返回状态码 \(httpResponse.statusCode)")
+            }
+        } catch {
+            return ConnectionProbeResult(
+                reachable: false,
+                message: "\(error.localizedDescription)（错误码 \(errorCode(of: error))）"
+            )
+        }
+    }
+
+    /**
+     * 提取网络错误码，便于区分 ATS 拦截、网络不通等场景。
+     *
+     * @param error 网络错误
+     * @returns 错误码（-1022 为 ATS 拦截明文 HTTP，-1004 无法连接主机，-1001 超时）
+     * @author xiangwei
+     */
+    private func errorCode(of error: Error) -> Int {
+        (error as NSError).code
+    }
+
+    /**
+     * 构造手动输入的 PC 设备
+     *
+     * @param ip 手动输入的 IP 地址
+     * @param port HTTP API 端口
+     * @returns PC 设备对象
+     * @author xiangwei
+     */
+    func makeManualPC(ip: String, port: Int = 19878) -> PCDevice {
+        PCDevice(
+            id: "manual-\(ip)",
+            name: ip,
+            hostName: ip,
+            ipAddress: ip,
+            port: port,
+            bonjourPort: 0,
+            currentUser: nil,
+            version: nil
+        )
+    }
+}
+
+/**
+ * 连通性测试结果
+ *
+ * @author xiangwei
+ */
+struct ConnectionProbeResult {
+    /// 服务是否可达（收到任意 HTTP 响应即可达，401 表示服务在但需要认证）
+    let reachable: Bool
+
+    /// 结果描述
+    let message: String
 }
 
 /**

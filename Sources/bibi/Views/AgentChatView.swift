@@ -74,6 +74,7 @@ struct AgentChatView: View {
                     ConnectionBanner(
                         state: agent.connection.state,
                         pcName: agent.connection.connectedPC?.name,
+                        discoveredCount: agent.connection.discoveredPCs.count,
                         onTap: onOpenSettings
                     )
                     .transition(.move(edge: .top).combined(with: .opacity))

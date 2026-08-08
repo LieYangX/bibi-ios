@@ -34,6 +34,9 @@ struct PCDevice: Identifiable, Hashable {
     /// IP 地址或主机名
     let hostName: String
 
+    /// 从 Bonjour 解析出的直连 IP 地址（优先于 hostName 使用）
+    let ipAddress: String?
+
     /// HTTP API 端口
     let port: Int
 

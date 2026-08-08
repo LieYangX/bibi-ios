@@ -59,6 +59,18 @@ struct ContentView: View {
             opensSettingsAfterTools = false
             openSettings()
         }
+        // 连接状态变化时同步 PC 工具：连接成功后加载工具列表并注入智能体，
+        // 断开后清理工具，避免残留
+        .onChange(of: connection.state) { oldState, newState in
+            if newState == .connected {
+                guard let pc = connection.connectedPC else { return }
+                Task {
+                    await agent.onConnected(to: pc)
+                }
+            } else if oldState == .connected && newState == .disconnected {
+                agent.onDisconnected()
+            }
+        }
     }
 
     private var settingsView: some View {

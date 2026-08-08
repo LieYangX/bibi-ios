@@ -10,6 +10,10 @@ import SwiftUI
 struct ConnectionBanner: View {
     let state: ConnectionState
     let pcName: String?
+
+    /// 已发现的设备数量（搜索中实时显示）
+    let discoveredCount: Int
+
     let onTap: () -> Void
 
     var body: some View {
@@ -73,6 +77,10 @@ struct ConnectionBanner: View {
     private var statusText: String {
         switch state {
         case .searching:
+            // 搜索中实时反馈已发现数量
+            if discoveredCount > 0 {
+                return "正在寻找电脑 · 已发现 \(discoveredCount) 台"
+            }
             return "正在寻找电脑"
         case .found:
             return pcName.map { "发现 \($0)" } ?? "发现可连接电脑"

@@ -18,6 +18,19 @@
     <string>用于将您的语音指令实时转写为文字，方便向星枢提问。</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>用于在您使用语音输入时，录制并识别您的声音。</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>用于在同一局域网内发现并连接笔笔电脑版，实现记账、日程等电脑端工具。</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_bibi-tools._tcp</string>
+    </array>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
     <key>UIBackgroundModes</key>
     <array>
         <string>fetch</string>
