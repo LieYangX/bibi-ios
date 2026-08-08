@@ -1,0 +1,19 @@
+index.html
+  s_bc35b53ac41fa7::t_5f189cd9c2fcfd 1-378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c0c2499b1004fa82205a7f96114dcaba9461c6bc",
+  "prompts": {},
+  "sessions": {
+    "s_bc35b53ac41fa7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "389ebf82-96df-4124-938c-760fa8eebb5b",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    }
+  }
+}
