@@ -1,0 +1,26 @@
+README.md
+  s_bc35b53ac41fa7::t_3e443b6abe8210 1,3
+index.html
+  s_bc35b53ac41fa7::t_1a9943ea879a3d 261
+  s_bc35b53ac41fa7::t_3e82736192a284 243-244
+  s_bc35b53ac41fa7::t_306ce63e562b78 269
+  s_bc35b53ac41fa7::t_212e53494cc2a5 322
+  s_bc35b53ac41fa7::t_50cf05b2afcd8b 351
+  s_bc35b53ac41fa7::t_f9589f5a404856 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "edc0f0a54af81e0ca2cc3156467e03cf5523bae7",
+  "prompts": {},
+  "sessions": {
+    "s_bc35b53ac41fa7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "389ebf82-96df-4124-938c-760fa8eebb5b",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    }
+  }
+}
