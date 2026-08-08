@@ -1,0 +1,60 @@
+Sources/bibi/Views/SettingsView.swift
+  s_bc35b53ac41fa7::t_9570f656497235 99-103
+  s_bc35b53ac41fa7::t_924105b359438b 253-255,257-258,260-266
+  s_bc35b53ac41fa7::t_f26239cebbd10d 256,259
+  s_bc35b53ac41fa7::t_f7ccd1df8b7429 278
+  s_bc35b53ac41fa7::t_37f98953702eb9 17
+  s_bc35b53ac41fa7::t_e45ddc7b2069a9 290-316
+Sources/bibi/Services/BonjourDiscovery.swift
+  s_bc35b53ac41fa7::t_b359b3e6edb49e 115,122-123,133-135,140-145,147-152,154,158
+  s_bc35b53ac41fa7::t_65f45c9c62e30c 17-22,66-72,89-91,95-96,109-114,116-121,124-132,136-139,146,153,155-157,159-169
+Sources/bibi/Views/ManualConnectionView.swift
+  s_bc35b53ac41fa7::t_6236fcb524aebf 139,141
+  s_bc35b53ac41fa7::t_6de069a4c1cee6 96
+  s_bc35b53ac41fa7::t_fa54a2753d5456 140,142-143,166
+  s_bc35b53ac41fa7::t_23b392c72d1e7c 171,173
+  s_bc35b53ac41fa7::t_d156f791bf8254 17,27
+  s_bc35b53ac41fa7::t_54a6ff5bf82b67 1-16,18-26,28-95,97-138,144-165,167-170,172,174-180
+Sources/bibi/ContentView.swift
+  s_bc35b53ac41fa7::t_89e7b99f14fa5c 70
+  s_bc35b53ac41fa7::t_c4bf4df4c29605 62-69,71-73
+Resources/Info.plist
+  s_bc35b53ac41fa7::t_2cd0684a1c5bd3 22
+  s_bc35b53ac41fa7::t_b47ca5ce840ee0 29-30
+  s_bc35b53ac41fa7::t_53fd9acfcfdef0 21,23-28,31-33
+Sources/bibi/Services/ConnectionManager.swift
+  s_bc35b53ac41fa7::t_e5c31ebe73c7a8 108-111,115-121,135-164
+  s_bc35b53ac41fa7::t_561b271b09907b 436-439,443-445,447-448,450-451,453-457,477,479,489-510
+  s_bc35b53ac41fa7::t_07f6afd78a9e65 514-523
+  s_bc35b53ac41fa7::t_fbebc24b9fec51 327-328,336,341-354
+  s_bc35b53ac41fa7::t_5e39f9e086c345 52-57,165-167,511-513
+  s_bc35b53ac41fa7::t_be78d8caaa12dc 373-378,382-384
+  s_bc35b53ac41fa7::t_ddfa353cd0d96f 233-237,242,250
+  s_bc35b53ac41fa7::t_989effe91e5b15 440-442,446,449,452,461,463-470,473-476
+  s_bc35b53ac41fa7::t_6b22a6bfedd249 458-460,462,471-472,478,480-488
+dev.ps1
+  s_bc35b53ac41fa7::t_aaa52a3ad1416f 54,57,60,63
+Sources/bibi/Models/ConnectionState.swift
+  s_bc35b53ac41fa7::t_629ce4235b63cc 37-39
+Sources/bibi/Components/ConnectionBanner.swift
+  s_bc35b53ac41fa7::t_069cc462c4a172 13-16
+  s_bc35b53ac41fa7::t_7239e17a0bc96d 80-83
+Sources/bibi/Views/AgentChatView.swift
+  s_bc35b53ac41fa7::t_1f022572ad5885 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8c21981d7e03b23cf3fc8f539d4754b2adcfbdd5",
+  "prompts": {},
+  "sessions": {
+    "s_bc35b53ac41fa7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "389ebf82-96df-4124-938c-760fa8eebb5b",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    }
+  }
+}
