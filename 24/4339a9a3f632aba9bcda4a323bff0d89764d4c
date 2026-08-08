@@ -1,0 +1,19 @@
+index.html
+  s_bc35b53ac41fa7::t_20c93ae82ae2a5 11-19,21,38-39,42-43,51,59-60,66,68,72,74,82,84,86,90-99,108-114,118,122-124,128,134,137,145,150-155,160-161,172,175,180-181,187,190,192,200,202,207,211,213,217,219,225-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "244339a9a3f632aba9bcda4a323bff0d89764d4c",
+  "prompts": {},
+  "sessions": {
+    "s_bc35b53ac41fa7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "389ebf82-96df-4124-938c-760fa8eebb5b",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    }
+  }
+}
