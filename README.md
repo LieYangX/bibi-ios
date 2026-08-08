@@ -15,9 +15,13 @@
 ## 界面预览
 
 <p align="center">
-    <img src="assets/screenshot-chat.png" alt="聊天主界面" width="32%"/>
-    <img src="assets/screenshot-tools.png" alt="工具面板" width="32%"/>
-    <img src="assets/screenshot-pairing.png" alt="电脑连接与配对" width="32%"/>
+    <img src="assets/首页.jpg" alt="首页" width="32%"/>
+    <img src="assets/工具页1.jpg" alt="工具页 1" width="32%"/>
+    <img src="assets/工具页2.jpg" alt="工具页 2" width="32%"/>
+</p>
+<p align="center">
+    <img src="assets/设置页.jpg" alt="设置" width="32%"/>
+    <img src="assets/关于应用页.jpg" alt="关于应用" width="32%"/>
 </p>
 
 ## 技术栈
