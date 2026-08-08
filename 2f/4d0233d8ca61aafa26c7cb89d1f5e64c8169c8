@@ -1,0 +1,24 @@
+index.html
+  s_bc35b53ac41fa7::t_51122c96aaa00b 250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2f4d0233d8ca61aafa26c7cb89d1f5e64c8169c8",
+  "prompts": {},
+  "humans": {
+    "h_1d1a3d05761997": {
+      "author": "xiangwei <18573714766@139.com>"
+    }
+  },
+  "sessions": {
+    "s_bc35b53ac41fa7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "389ebf82-96df-4124-938c-760fa8eebb5b",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "xiangwei <18573714766@139.com>"
+    }
+  }
+}
