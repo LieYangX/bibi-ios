@@ -12,6 +12,14 @@
 - **定时任务与主动消息**：AI 驱动的前台到期提醒与主动联系
 - **多用户**：本地多用户隔离，连接电脑后可加载远程用户
 
+## 界面预览
+
+<p align="center">
+    <img src="assets/screenshot-chat.png" alt="聊天主界面" width="32%"/>
+    <img src="assets/screenshot-tools.png" alt="工具面板" width="32%"/>
+    <img src="assets/screenshot-pairing.png" alt="电脑连接与配对" width="32%"/>
+</p>
+
 ## 技术栈
 
 | 分类 | 选型 |
