@@ -3,7 +3,7 @@ import Foundation
 /**
  * PC 工具服务
  *
- * 通过配对认证后的 HTTP 请求调用 PC 端记账工具。
+ * 通过配对认证后的 HTTP 请求调用 PC 端工具。
  *
  * @author xiangwei
  */
@@ -44,7 +44,7 @@ final class PcToolService {
     }
 
     /**
-     * 调用 PC 端的记账工具
+     * 调用 PC 端工具
      *
      * @param toolName 工具名
      * @param args 参数字典

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /**
- * 笔笔应用入口。
+ * 星枢应用入口。
  *
  * 所有页面共享同一组连接、用户、会话和设置服务，保证跨标签状态一致。
  *
@@ -23,6 +23,7 @@ struct bibiApp: App {
     @State private var themeManager = ThemeManager()
     @State private var notificationManager = NotificationManager.shared
     @State private var proactiveService = ProactiveMessageService.shared
+    @State private var taskScheduler = TaskSchedulerService.shared
 
     init() {
         let pendingOperation = CrashBreadcrumbStore.consumePending()
@@ -57,13 +58,16 @@ struct bibiApp: App {
 
         let connection = ConnectionManager()
         let settings = SettingsStore()
+        // 迁移 Keychain 可访问性，确保后台任务能读取 API Key
+        KeychainHelper.shared.migrateAccessibilityIfNeeded()
         let conversations = ConversationManager()
         let pcTools = PcToolService(connection: connection)
-        let localTools = LocalToolService()
         let mcpClient = MCPClient.shared
         let users = UserManager(connection: connection)
         let memory = MemoryManager()
+        let localTools = LocalToolService(memoryManager: memory)
         let voice = VoiceInputManager(settings: settings)
+        let scheduler = TaskSchedulerService.shared
         let agent = AgentService(
             connection: connection,
             conversations: conversations,
@@ -72,7 +76,8 @@ struct bibiApp: App {
             localTools: localTools,
             mcpClient: mcpClient,
             settings: settings,
-            memory: memory
+            memory: memory,
+            taskScheduler: scheduler
         )
 
         _connectionManager = State(initialValue: connection)
@@ -84,10 +89,13 @@ struct bibiApp: App {
         _agentService = State(initialValue: agent)
         _voiceInput = State(initialValue: voice)
         _memoryManager = State(initialValue: memory)
+        _taskScheduler = State(initialValue: scheduler)
         agent.initialize()
         // 注入主动消息服务依赖并启动调度
         proactiveService.configure(agent: agent, settings: settings)
         proactiveService.start()
+        // 注入任务调度服务依赖
+        scheduler.configure(agent: agent)
 
         users.onUserSwitched = { [weak agent] userId in
             await agent?.onUserSwitched(to: userId)
@@ -113,6 +121,7 @@ struct bibiApp: App {
             .environment(themeManager)
             .environment(notificationManager)
             .environment(proactiveService)
+            .environment(taskScheduler)
             .preferredColorScheme(themeManager.preferredScheme.toColorScheme)
             .task {
                 // 启动时申请通知授权
@@ -120,6 +129,7 @@ struct bibiApp: App {
             }
             .onChange(of: scenePhase) { _, newPhase in
                 proactiveService.handleScenePhase(newPhase)
+                taskScheduler.handleScenePhase(newPhase)
             }
         }
     }

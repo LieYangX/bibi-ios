@@ -26,7 +26,7 @@ struct MemoryItemsView: View {
     private var subtitle: String {
         switch category {
         case .userProfile:
-            return "关于你的信息，小笔会在对话中参考"
+            return "关于你的信息，星枢会在对话中参考"
         case .longTerm:
             return "跨会话记住的重要事实，对话中自动积累"
         case .soul:
@@ -100,6 +100,10 @@ struct MemoryItemsView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            // 打开页面时强制重新加载，确保与数据库状态一致
+            memoryManager.reload()
+        }
         .alert("新增\(title)", isPresented: $showAddAlert) {
             TextField("输入内容", text: $newContent)
             Button("添加") {
@@ -140,9 +144,16 @@ struct MemoryItemsView: View {
                         .font(.bibiBody)
                         .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(relativeDate(item.updatedAt))
-                        .font(.bibiCaption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        Text(item.source.displayName)
+                            .font(.bibiCaption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.12), in: Capsule())
+                        Text(relativeDate(item.updatedAt))
+                            .font(.bibiCaption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
 
                 Spacer(minLength: 8)
@@ -186,9 +197,9 @@ struct MemoryItemsView: View {
         guard !content.isEmpty else { return }
         switch category {
         case .userProfile:
-            memoryManager.addProfile(content: content)
+            memoryManager.addProfile(content: content, source: .manual, confidence: 1.0)
         case .longTerm:
-            memoryManager.addLongTerm(content: content, importance: 0.5)
+            memoryManager.addLongTerm(content: content, importance: 0.7, source: .manual, confidence: 1.0)
         case .soul:
             break
         }
@@ -229,7 +240,7 @@ struct MemoryItemsView: View {
     private var emptyDescription: String {
         switch category {
         case .userProfile:
-            return "手动添加关于你的信息，或在对话中让小笔了解你"
+            return "手动添加关于你的信息，或在对话中让星枢了解你"
         case .longTerm:
             return "对话达到 4 轮后自动提取，也可手动添加"
         case .soul:

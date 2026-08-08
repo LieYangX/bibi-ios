@@ -120,6 +120,8 @@ final class ConversationManager {
      */
     func deleteConversation(id: UUID) {
         try? db.run("DELETE FROM chat_message_record WHERE conversation_id = ?", args: [id.uuidString])
+        try? db.run("DELETE FROM todo_item WHERE conversation_id = ?", args: [id.uuidString])
+        try? db.run("DELETE FROM scheduled_task WHERE conversation_id = ?", args: [id.uuidString])
         try? db.run("DELETE FROM conversation WHERE id = ?", args: [id.uuidString])
         conversations.removeAll { $0.id == id }
         if currentConversationId == id {
@@ -133,6 +135,17 @@ final class ConversationManager {
      */
     func clear() {
         conversations.removeAll()
+        currentConversationId = nil
+    }
+
+    /**
+     * 清除当前会话选择。
+     *
+     * 用于开始新对话，不删除历史对话数据。
+     *
+     * @author xiangwei
+     */
+    func clearCurrentConversation() {
         currentConversationId = nil
     }
 

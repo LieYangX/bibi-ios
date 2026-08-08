@@ -21,6 +21,7 @@ final class LLMProvider {
      * @param roundIndex 多轮对话轮次（从 1 开始）
      * @param thinkingEnabled 是否启用思考模式（默认开启）
      * @param reasoningEffort 思考强度（low / high / max，默认 high）
+     * @param responseFormat 响应格式（如 ["type": "json_object"]），nil 表示不限制
      * @returns 流式事件序列
      * @author xiangwei
      */
@@ -33,7 +34,8 @@ final class LLMProvider {
         traceId: String,
         roundIndex: Int = 0,
         thinkingEnabled: Bool = true,
-        reasoningEffort: String = "high"
+        reasoningEffort: String = "high",
+        responseFormat: [String: Any]? = nil
     ) -> AsyncThrowingStream<LLMStreamEvent, Error> {
         let (streamSequence, continuation) = AsyncThrowingStream<LLMStreamEvent, Error>.makeStream()
 
@@ -55,6 +57,9 @@ final class LLMProvider {
             ]
             if let tools, !tools.isEmpty {
                 body["tools"] = tools.map { ["type": "function", "function": $0] }
+            }
+            if let responseFormat, !responseFormat.isEmpty {
+                body["response_format"] = responseFormat
             }
             bodyData = try JSONSerialization.data(withJSONObject: body)
             requestJSON = String(data: bodyData, encoding: .utf8) ?? "{}"

@@ -33,16 +33,18 @@ struct ConversationListView: View {
                                         renameTarget = conversation
                                         renameText = conversation.title
                                     } label: {
-                                        Label("修改", systemImage: "pencil")
+                                        Image(systemName: "pencil")
                                     }
                                     .tint(.accentBlue)
+                                    .accessibilityLabel("修改")
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
                                         agent.deleteConversation(id: conversation.id)
                                     } label: {
-                                        Label("删除", systemImage: "trash")
+                                        Image(systemName: "trash")
                                     }
+                                    .accessibilityLabel("删除")
                                 }
                         }
                     }
@@ -90,22 +92,24 @@ struct ConversationListView: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
-                    HStack(spacing: 6) {
-                        Text("\(conversation.messageCount) 条消息")
-                        Text("·")
-                        Text(conversation.updatedAt, style: .relative)
-                    }
-                    .font(.bibiCaption)
-                    .foregroundStyle(.secondary)
+                    Text("\(conversation.messageCount) 条消息")
+                        .font(.bibiCaption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer(minLength: 8)
 
-                if conversation.id == agent.conversations.currentConversationId {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.brandGold)
-                        .font(.caption.weight(.semibold))
-                        .accessibilityLabel("当前对话")
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(AppFormatters.conversationTime(conversation.updatedAt))
+                        .font(.bibiCaption)
+                        .foregroundStyle(.secondary)
+
+                    if conversation.id == agent.conversations.currentConversationId {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.brandGold)
+                            .font(.caption.weight(.semibold))
+                            .accessibilityLabel("当前对话")
+                    }
                 }
             }
             .padding(.vertical, 4)

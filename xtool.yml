@@ -1,5 +1,5 @@
 version: 1
-bundleID: com.lieyang.bibi
+bundleID: com.lieyang.starnexus
 iconPath: Resources/AppIcon.png
 infoPath: Resources/Info.plist
 entitlementsPath: Resources/bibi.entitlements

@@ -24,6 +24,18 @@ struct MemoryItemRecord: Codable, FetchableRecord, PersistableRecord {
     /// 重要度
     let importance: Double
 
+    /// 记忆来源原始值
+    let source: String
+
+    /// 提取置信度
+    let confidence: Double
+
+    /// 引用次数
+    let accessCount: Int
+
+    /// 最近引用时间
+    let lastAccessedAt: Date
+
     /// 创建时间
     let createdAt: Date
 
@@ -36,6 +48,10 @@ struct MemoryItemRecord: Codable, FetchableRecord, PersistableRecord {
         case category
         case content
         case importance
+        case source
+        case confidence
+        case accessCount = "access_count"
+        case lastAccessedAt = "last_accessed_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -53,6 +69,10 @@ struct MemoryItemRecord: Codable, FetchableRecord, PersistableRecord {
             category: MemoryCategory(rawValue: category) ?? .longTerm,
             content: content,
             importance: importance,
+            source: MemorySource(rawValue: source) ?? .manual,
+            confidence: confidence,
+            accessCount: accessCount,
+            lastAccessedAt: lastAccessedAt,
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -72,6 +92,10 @@ struct MemoryItemRecord: Codable, FetchableRecord, PersistableRecord {
             category: item.category.rawValue,
             content: item.content,
             importance: item.importance,
+            source: item.source.rawValue,
+            confidence: item.confidence,
+            accessCount: item.accessCount,
+            lastAccessedAt: item.lastAccessedAt,
             createdAt: item.createdAt,
             updatedAt: item.updatedAt
         )

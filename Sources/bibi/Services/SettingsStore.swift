@@ -66,6 +66,11 @@ final class SettingsStore {
         }
     }
 
+    /// 是否启用语音识别后自动矫正。
+    var speechCorrectionEnabled: Bool {
+        didSet { self.set(.speechCorrectionEnabled, value: speechCorrectionEnabled ? "true" : "false") }
+    }
+
     /**
      * 初始化设置存储。
      *
@@ -79,5 +84,6 @@ final class SettingsStore {
         proactiveIntervalMinutes = Int(defaults.string(forKey: SettingKey.proactiveIntervalMinutes.rawValue) ?? "") ?? 120
         llmModel = defaults.string(forKey: SettingKey.llmModel.rawValue) ?? DeepSeekModel.flash.rawValue
         reasoningEffort = defaults.string(forKey: SettingKey.reasoningEffort.rawValue) ?? "high"
+        speechCorrectionEnabled = defaults.string(forKey: SettingKey.speechCorrectionEnabled.rawValue) != "false"
     }
 }

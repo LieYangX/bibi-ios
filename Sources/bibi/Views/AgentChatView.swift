@@ -9,6 +9,7 @@ import SwiftUI
  */
 struct AgentChatView: View {
     private static let titleRevealOffset: CGFloat = 12
+    private static let voiceCancelThreshold: CGFloat = 80
 
     @State private var agent: AgentService
     @State private var voice: VoiceInputManager
@@ -17,7 +18,11 @@ struct AgentChatView: View {
     @State private var showVoiceError = false
     @State private var showsCompactTitle = false
     @State private var isAppeared = false
+    @State private var isVoiceMode = false
+    @State private var liveVoiceText = ""
+    @State private var voiceTranslation = CGSize.zero
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(SettingsStore.self) private var settingsStore
     @Environment(ProactiveMessageService.self) private var proactiveService
     let onOpenTools: () -> Void
     let onOpenSettings: () -> Void
@@ -44,11 +49,23 @@ struct AgentChatView: View {
                 messageList
             }
         }
+        .overlay(alignment: .bottom) {
+            if voice.isRecording {
+                VoiceRecordingOverlay(
+                    text: liveVoiceText,
+                    isCancelled: voiceTranslation.height < -Self.voiceCancelThreshold
+                )
+                .padding(.bottom, 110)
+                .transition(.opacity.combined(with: .scale))
+            }
+        }
+        .animation(.smooth(duration: 0.2), value: voice.isRecording)
         .safeAreaBar(edge: .top, spacing: 0) {
             VStack(spacing: 0) {
                 ChatTopBar(
                     showsTitle: showsCompactTitle && !agent.messages.isEmpty,
                     onOpenHistory: { showConversations = true },
+                    onNewConversation: { agent.startNewConversation() },
                     onOpenTools: onOpenTools,
                     onOpenSettings: onOpenSettings
                 )
@@ -66,22 +83,22 @@ struct AgentChatView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 8) {
-                if voice.isRecording {
-                    voiceStatusBar(text: "正在聆听，点击波形按钮结束录音")
-                } else if voice.isCorrecting {
+                if voice.isCorrecting {
                     voiceStatusBar(text: "正在矫正识别文字…")
                 }
 
                 InputBar(
                     text: $messageText,
+                    isVoiceMode: $isVoiceMode,
                     isProcessing: agent.isProcessing,
                     isRecording: voice.isRecording,
                     onSend: { sendMessage(messageText) },
                     onStop: { agent.cancelProcessing() },
-                    onVoice: toggleVoiceInput
+                    onVoicePressBegan: beginVoiceRecording,
+                    onVoiceDragChanged: { voiceTranslation = $0 },
+                    onVoicePressEnded: endVoiceRecording
                 )
             }
-            .animation(.smooth(duration: 0.25), value: voice.isRecording)
             .animation(.smooth(duration: 0.25), value: voice.isCorrecting)
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -102,6 +119,12 @@ struct AgentChatView: View {
         .onChange(of: agent.messages.isEmpty) { _, isEmpty in
             if isEmpty {
                 showsCompactTitle = false
+            }
+        }
+        .onChange(of: isVoiceMode) { _, voiceMode in
+            // 从语音模式切回文本模式时，若还在录音则停止
+            if !voiceMode, voice.isRecording {
+                voice.stopRecognition()
             }
         }
         .sheet(isPresented: $showConversations) {
@@ -164,7 +187,12 @@ struct AgentChatView: View {
             }
             .scrollEdgeEffectStyle(.soft, for: .top)
             .scrollDismissesKeyboard(.interactively)
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.visible)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    scrollToBottom(using: proxy, animated: false)
+                }
+            }
             .onChange(of: agent.messages.count) { _, _ in
                 scrollToBottom(using: proxy)
             }
@@ -227,36 +255,25 @@ struct AgentChatView: View {
     }
 
     /**
-     * 切换语音输入：录音中则停止，未录音则开始识别。
+     * 开始按住说话录音。
+     *
+     * 按下时启动语音识别流，松开后流结束并进入 finalizeVoiceRecording 处理。
      *
      * @author xiangwei
      */
-    private func toggleVoiceInput() {
-        if voice.isRecording {
-            voice.stopRecognition()
-        } else {
-            startVoiceInput()
-        }
-    }
-
-    /**
-     * 启动语音识别，将识别文本实时写入输入框，
-     * 识别结束后调用 AI 矫正错字。
-     *
-     * @author xiangwei
-     */
-    private func startVoiceInput() {
-        Task {
+    private func beginVoiceRecording() {
+        guard !voice.isRecording else { return }
+        liveVoiceText = ""
+        voiceTranslation = .zero
+        Task { @MainActor in
             do {
                 let stream = try await voice.startRecognition()
                 var finalText = ""
                 for await text in stream {
                     finalText = text
-                    messageText = text
+                    liveVoiceText = text
                 }
-                if !finalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    await correctVoiceText(finalText)
-                }
+                await finalizeVoiceRecording(finalText)
             } catch {
                 showVoiceError = true
             }
@@ -264,23 +281,56 @@ struct AgentChatView: View {
     }
 
     /**
-     * 调用 AI 矫正语音识别文本中的错字。
+     * 结束按住说话录音。
      *
-     * 仅在输入框内容仍为原始识别文本时替换，避免覆盖用户的后续编辑。
+     * 松开按钮时调用，触发识别任务结束并产生最终结果。
      *
-     * @param original 原始识别文本
      * @author xiangwei
      */
-    private func correctVoiceText(_ original: String) async {
-        do {
-            let corrected = try await voice.correctSpeechText(original)
-            if messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-                == original.trimmingCharacters(in: .whitespacesAndNewlines) {
-                messageText = corrected
+    private func endVoiceRecording() {
+        voice.stopRecognition()
+    }
+
+    /**
+     * 语音识别结束后处理发送。
+     *
+     * 若开启自动纠正则先调用 AI 纠正，纠正完成后自动发送；
+     * 未开启纠正则直接发送识别原文。
+     *
+     * @param finalText 识别最终文本
+     * @author xiangwei
+     */
+    private func finalizeVoiceRecording(_ finalText: String) async {
+        let trimmed = finalText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cancelled = voiceTranslation.height < -Self.voiceCancelThreshold
+        voiceTranslation = .zero
+        liveVoiceText = ""
+        guard !trimmed.isEmpty, !cancelled else { return }
+
+        if settingsStore.speechCorrectionEnabled {
+            do {
+                let corrected = try await voice.correctSpeechText(trimmed)
+                let textToSend = corrected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? trimmed
+                    : corrected
+                await sendVoiceResult(textToSend)
+            } catch {
+                await sendVoiceResult(trimmed)
             }
-        } catch {
-            // 矫正失败时保留原始识别文本，不打断用户
+        } else {
+            await sendVoiceResult(trimmed)
         }
+    }
+
+    /**
+     * 发送语音识别的最终结果。
+     *
+     * @param text 要发送的文本
+     * @author xiangwei
+     */
+    private func sendVoiceResult(_ text: String) async {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        await agent.sendMessage(text)
     }
 
     /**
@@ -301,6 +351,37 @@ struct AgentChatView: View {
 }
 
 /**
+ * 语音录制浮层气泡。
+ *
+ * 按住说话时显示在输入栏上方，实时展示识别文字；
+ * 上滑超过阈值后提示松开取消发送。
+ *
+ * @author xiangwei
+ */
+private struct VoiceRecordingOverlay: View {
+    let text: String
+    let isCancelled: Bool
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: isCancelled ? "xmark.circle.fill" : "waveform")
+                .font(.bibiLargeTitle)
+                .foregroundStyle(isCancelled ? .red : .brandGold)
+
+            Text(isCancelled ? "松开取消发送" : (text.isEmpty ? "正在聆听…" : text))
+                .font(.bibiBody)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
+                .lineLimit(4)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 18)
+        .frame(maxWidth: 260)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+    }
+}
+
+/**
  * 主聊天页顶部玻璃控制条。
  *
  * @author xiangwei
@@ -308,6 +389,7 @@ struct AgentChatView: View {
 private struct ChatTopBar: View {
     let showsTitle: Bool
     let onOpenHistory: () -> Void
+    let onNewConversation: () -> Void
     let onOpenTools: () -> Void
     let onOpenSettings: () -> Void
 
@@ -315,7 +397,7 @@ private struct ChatTopBar: View {
         GlassEffectContainer(spacing: 12) {
             ZStack {
                 if showsTitle {
-                    Text("小笔")
+                    Text("星枢")
                         .font(.bibiHeadline)
                         .transition(.opacity.combined(with: .offset(y: 5)))
                 }
@@ -323,6 +405,15 @@ private struct ChatTopBar: View {
                 HStack(spacing: 12) {
                     Button(action: onOpenHistory) {
                         Label("历史对话", systemImage: "bubble.left.and.bubble.right")
+                            .labelStyle(.iconOnly)
+                            .font(.bibiBodyMedium)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+
+                    Button(action: onNewConversation) {
+                        Label("新建对话", systemImage: "square.and.pencil")
                             .labelStyle(.iconOnly)
                             .font(.bibiBodyMedium)
                             .frame(width: 44, height: 44)

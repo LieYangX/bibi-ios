@@ -30,7 +30,7 @@ final class ProactiveMessageService {
 
     /// 后台刷新任务标识（与 Info.plist 中 BGTaskSchedulerPermittedIdentifiers 保持一致）。
     /// 用 nonisolated 常量，便于非隔离上下文中注册后台任务时引用。
-    nonisolated static let taskIdentifier = "com.bibi.proactiveMessage"
+    nonisolated static let taskIdentifier = "com.lieyang.starnexus.proactiveMessage"
 
     private var agent: AgentService?
     private var settings: SettingsStore?
@@ -198,9 +198,9 @@ final class ProactiveMessageService {
 
         // 只要不在聊天窗口（其他页面或后台）就弹系统通知，正文显示生成内容
         if !(isChatVisible && UIApplication.shared.applicationState == .active) {
-            let body = generatedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "小笔给你发了一条新消息"
+            let body = generatedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "星枢给你发了一条新消息"
             await notifications.sendImmediateNotification(
-                title: "小笔",
+                title: "星枢",
                 body: body,
                 userInfo: ["source": "proactive"]
             )

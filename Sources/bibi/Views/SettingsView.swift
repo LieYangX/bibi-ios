@@ -255,7 +255,7 @@ struct SettingsView: View {
                         Text(connection.state == .searching ? "正在搜索" : "重新搜索")
                             .font(.bibiBodyMedium)
                             .foregroundStyle(.primary)
-                        Text("查找同一网络中的笔笔电脑版")
+                        Text("查找同一网络中的星枢电脑版")
                             .font(.bibiCaption)
                             .foregroundStyle(.secondary)
                     }
@@ -316,6 +316,16 @@ struct SettingsView: View {
                 }
             }
 
+            Toggle(isOn: speechCorrectionEnabledBinding) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("语音自动矫正")
+                        .font(.bibiBody)
+                    Text("识别结束后用 AI 修正同音字和错别字")
+                        .font(.bibiCaption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Text("API Key 仅保存在系统钥匙串中。")
                 .font(.bibiCaption)
                 .foregroundStyle(.secondary)
@@ -327,7 +337,7 @@ struct SettingsView: View {
         Section("主动消息") {
             Toggle(isOn: proactiveEnabledBinding) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("允许小笔主动联系你")
+                    Text("允许星枢主动联系你")
                         .font(.bibiBody)
                     Text("定时主动发消息，你正在使用时不会打扰")
                         .font(.bibiCaption)
@@ -376,7 +386,7 @@ struct SettingsView: View {
                     icon: "sparkles",
                     color: .brandGold,
                     title: "灵魂设定",
-                    subtitle: "小笔的自我认知与说话方式"
+                    subtitle: "对话中积累的行为规则，共 \(memoryManager.soulRuleItems.count) 条"
                 )
             }
 
@@ -585,6 +595,13 @@ struct SettingsView: View {
         Binding(
             get: { settingsStore.reasoningEffort },
             set: { settingsStore.reasoningEffort = $0 }
+        )
+    }
+
+    private var speechCorrectionEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { settingsStore.speechCorrectionEnabled },
+            set: { settingsStore.speechCorrectionEnabled = $0 }
         )
     }
 

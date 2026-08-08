@@ -1,50 +1,49 @@
 import SwiftUI
 
 /**
- * 灵魂设定编辑页。
+ * 灵魂设定页（只读）。
  *
- * 编辑智能体「小笔」的自我认知、性格与说话方式，
- * 内容保存后作为 system 消息注入每次对话。
+ * 灵魂设定不允许用户手动设置，由对话中星枢通过 manage_memory 工具
+ * （add_soul_rule）自动保存行为规则。页面仅展示规则列表，支持滑动删除。
  *
  * @author xiangwei
  */
 struct MemorySoulView: View {
     @Environment(MemoryManager.self) private var memoryManager
-    @State private var draft = ""
-    @State private var showsSavedHint = false
 
     var body: some View {
         ZStack {
             AnimatedBackground()
 
             List {
-                Section {
-                    TextEditor(text: $draft)
-                        .font(.bibiBody)
-                        .frame(minHeight: 260)
-                        .scrollContentBackground(.hidden)
-                        .padding(4)
-                } header: {
-                    Text("小笔的自我认知")
-                } footer: {
-                    Text("保存在本机，随对话注入到系统提示中。留空则使用默认人格。")
-                }
-
-                Section {
-                    Button(action: save) {
-                        HStack {
-                            Spacer()
-                            if showsSavedHint {
-                                Label("已保存", systemImage: "checkmark")
-                            } else {
-                                Text("保存灵魂设定")
-                            }
-                            Spacer()
+                if memoryManager.soulRuleItems.isEmpty {
+                    Section {
+                        VStack(spacing: 8) {
+                            Image(systemName: "checkmark.seal")
+                                .font(.bibiLargeTitle)
+                                .foregroundStyle(.secondary)
+                            Text("还没有行为规则")
+                                .font(.bibiBodyMedium)
+                            Text("当你在对话中要求星枢调整说话方式（如\"说话简短点\"）时，规则会在这里自动积累")
+                                .font(.bibiCaption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
-                        .font(.bibiBodyMedium)
-                        .foregroundStyle(Color.brandGold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
                     }
-                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                } else {
+                    Section {
+                        ForEach(memoryManager.soulRuleItems) { rule in
+                            ruleRow(rule)
+                        }
+                        .onDelete(perform: deleteRules)
+                    } header: {
+                        Text("对话中提炼的行为规则（\(memoryManager.soulRuleItems.count) 条）")
+                    } footer: {
+                        Text("规则由星枢在对话中通过 manage_memory 工具自动保存，可滑动删除。")
+                    }
                 }
             }
             .listStyle(.insetGrouped)
@@ -53,26 +52,69 @@ struct MemorySoulView: View {
         .navigationTitle("灵魂设定")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
-            draft = memoryManager.soulItem?.content ?? ""
-        }
-        .onDisappear {
-            if draft.trimmingCharacters(in: .whitespacesAndNewlines) !=
-                (memoryManager.soulItem?.content ?? "") {
-                save()
-            }
+            // 打开页面时强制重新加载，确保与数据库状态一致
+            memoryManager.reload()
         }
     }
 
     /**
-     * 保存灵魂设定内容。
+     * 构建规则行视图。
+     *
+     * @param rule 规则条目
+     * @returns 规则行视图
      * @author xiangwei
      */
-    private func save() {
-        memoryManager.saveSoul(content: draft)
-        showsSavedHint = true
-        Task {
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
-            showsSavedHint = false
+    private func ruleRow(_ rule: MemoryItem) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "checkmark.seal")
+                .font(.bibiBody)
+                .foregroundStyle(Color.brandGold)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(rule.content)
+                    .font(.bibiBody)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    Text(rule.source.displayName)
+                        .font(.bibiCaption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.12), in: Capsule())
+                    Text(relativeDate(rule.updatedAt))
+                        .font(.bibiCaption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Spacer(minLength: 8)
         }
+        .padding(.vertical, 4)
+    }
+
+    /**
+     * 删除行为规则。
+     *
+     * @param offsets 删除位置索引
+     * @author xiangwei
+     */
+    private func deleteRules(at offsets: IndexSet) {
+        for index in offsets {
+            let rule = memoryManager.soulRuleItems[index]
+            memoryManager.deleteItem(rule)
+        }
+    }
+
+    /**
+     * 格式化相对时间。
+     *
+     * @param date 日期
+     * @returns 相对时间文本
+     * @author xiangwei
+     */
+    private func relativeDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }

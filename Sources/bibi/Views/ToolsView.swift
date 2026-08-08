@@ -170,7 +170,7 @@ struct ToolsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("电脑服务在线")
                     .font(.bibiBodyMedium)
-                Text("已载入 \(pcTools.availableTools.count) 个记账能力")
+                Text("已载入 \(pcTools.availableTools.count) 个电脑端能力")
                     .font(.bibiCaption)
                     .foregroundStyle(.secondary)
             }

@@ -38,6 +38,15 @@ final class LocalToolService {
     /// 查询健康信息的工具名。
     static let healthInfoToolName = "get_health_info"
 
+    /// 管理待办事项的工具名。
+    static let manageTodoToolName = "manage_todo"
+
+    /// 管理定时任务的工具名。
+    static let manageScheduledTaskToolName = "manage_scheduled_task"
+
+    /// 管理记忆条目的工具名。
+    static let manageMemoryToolName = "manage_memory"
+
     /// 默认联系人返回数量。
     private static let defaultContactLimit = 10
 
@@ -78,86 +87,195 @@ final class LocalToolService {
     /// 当前正在等待的定位请求。
     private var locationRequest: LocationRequest?
 
+    /// 记忆管理器，用于记忆工具的读写。
+    private let memoryManager: MemoryManager
+
+    /**
+     * 初始化本机工具服务。
+     *
+     * @param memoryManager 记忆管理器
+     * @author xiangwei
+     */
+    init(memoryManager: MemoryManager) {
+        self.memoryManager = memoryManager
+    }
+
     /// 本机可用工具。
-    let availableTools: [PcToolDef] = [
-        PcToolDef(
-            name: LocalToolService.currentTimeToolName,
-            description: "获取当前设备的系统日期、时间、时区和 UTC 偏移。用户询问现在几点或当前日期时使用。",
-            parameters: LocalToolService.emptyParameters()
-        ),
-        PcToolDef(
-            name: LocalToolService.deviceInfoToolName,
-            description: "获取当前设备名称、设备类型、系统版本、区域和时区，无需系统授权。",
-            parameters: LocalToolService.emptyParameters()
-        ),
-        PcToolDef(
-            name: LocalToolService.batteryStatusToolName,
-            description: "获取当前设备电量、充电状态和低电量模式，无需系统授权。",
-            parameters: LocalToolService.emptyParameters()
-        ),
-        PcToolDef(
-            name: LocalToolService.appInfoToolName,
-            description: "获取笔笔应用名称、版本、构建号和 Bundle ID，无需系统授权。",
-            parameters: LocalToolService.emptyParameters()
-        ),
-        PcToolDef(
-            name: LocalToolService.currentLocationToolName,
-            description: "获取当前设备的经纬度、海拔和定位精度。仅在用户明确询问位置时使用，需要定位权限。",
-            parameters: LocalToolService.emptyParameters()
-        ),
-        PcToolDef(
-            name: LocalToolService.searchContactsToolName,
-            description: "按姓名搜索系统联系人并返回电话和邮箱。仅在用户明确要求查找联系人时使用，需要通讯录权限。",
-            parameters: PcToolParameters(
-                schema: [
-                    "type": AnyCodable("object"),
-                    "properties": AnyCodable([
-                        "query": [
-                            "type": "string",
-                            "description": "联系人姓名或姓名片段"
-                        ],
-                        "limit": [
-                            "type": "integer",
-                            "description": "最多返回数量，范围 1 到 30",
-                            "minimum": 1,
-                            "maximum": 30
-                        ]
-                    ] as [String: Any]),
-                    "required": AnyCodable(["query"]),
-                    "additionalProperties": AnyCodable(false)
-                ]
+    lazy var availableTools: [PcToolDef] = {
+        [
+            PcToolDef(
+                name: LocalToolService.currentTimeToolName,
+                description: "获取当前设备的系统日期、时间、时区和 UTC 偏移。用户询问现在几点或当前日期时使用。",
+                parameters: LocalToolService.emptyParameters()
+            ),
+            PcToolDef(
+                name: LocalToolService.deviceInfoToolName,
+                description: "获取当前设备名称、设备类型、系统版本、区域和时区，无需系统授权。",
+                parameters: LocalToolService.emptyParameters()
+            ),
+            PcToolDef(
+                name: LocalToolService.batteryStatusToolName,
+                description: "获取当前设备电量、充电状态和低电量模式，无需系统授权。",
+                parameters: LocalToolService.emptyParameters()
+            ),
+            PcToolDef(
+                name: LocalToolService.appInfoToolName,
+                description: "获取星枢应用名称、版本、构建号和 Bundle ID，无需系统授权。",
+                parameters: LocalToolService.emptyParameters()
+            ),
+            PcToolDef(
+                name: LocalToolService.currentLocationToolName,
+                description: "获取当前设备的经纬度、海拔和定位精度。仅在用户明确询问位置时使用，需要定位权限。",
+                parameters: LocalToolService.emptyParameters()
+            ),
+            PcToolDef(
+                name: LocalToolService.searchContactsToolName,
+                description: "按姓名搜索系统联系人并返回电话和邮箱。仅在用户明确要求查找联系人时使用，需要通讯录权限。",
+                parameters: PcToolParameters(
+                    schema: [
+                        "type": AnyCodable("object"),
+                        "properties": AnyCodable([
+                            "query": [
+                                "type": "string",
+                                "description": "联系人姓名或姓名片段"
+                            ],
+                            "limit": [
+                                "type": "integer",
+                                "description": "最多返回数量，范围 1 到 30",
+                                "minimum": 1,
+                                "maximum": 30
+                            ]
+                        ] as [String: Any]),
+                        "required": AnyCodable(["query"]),
+                        "additionalProperties": AnyCodable(false)
+                    ]
+                )
+            ),
+            PcToolDef(
+                name: LocalToolService.calendarEventsToolName,
+                description: "查询未来一段时间内的系统日历日程。仅在用户明确询问日程时使用，需要完整日历访问权限。",
+                parameters: PcToolParameters(
+                    schema: [
+                        "type": AnyCodable("object"),
+                        "properties": AnyCodable([
+                            "days": [
+                                "type": "integer",
+                                "description": "从今天开始查询的天数，范围 1 到 30",
+                                "minimum": 1,
+                                "maximum": 30
+                            ],
+                            "limit": [
+                                "type": "integer",
+                                "description": "最多返回数量，范围 1 到 50",
+                                "minimum": 1,
+                                "maximum": 50
+                            ]
+                        ] as [String: Any]),
+                        "additionalProperties": AnyCodable(false)
+                    ]
+                )
+            ),
+            PcToolDef(
+                name: LocalToolService.healthInfoToolName,
+                description: "获取今日健康与运动数据，包括步数、心率、睡眠时长、活动能量和步行距离。用户询问健康、运动、睡眠或身体数据时使用，需要健康访问权限。",
+                parameters: LocalToolService.emptyParameters()
+            ),
+            PcToolDef(
+                name: LocalToolService.manageTodoToolName,
+                description: "管理当前会话的待办事项：新增、列出、完成、删除。待办由智能体维护，可与定时任务配合。",
+                parameters: PcToolParameters(
+                    schema: [
+                        "type": AnyCodable("object"),
+                        "properties": AnyCodable([
+                            "action": [
+                                "type": "string",
+                                "description": "操作类型：add（新增）、list（列出）、complete（完成）、delete（删除）",
+                                "enum": ["add", "list", "complete", "delete"]
+                            ],
+                            "title": [
+                                "type": "string",
+                                "description": "add 时必填，待办标题"
+                            ],
+                            "todoId": [
+                                "type": "string",
+                                "description": "complete 或 delete 时必填，待办标识"
+                            ],
+                            "includeCompleted": [
+                                "type": "boolean",
+                                "description": "list 时可选，是否包含已完成项，默认 false"
+                            ]
+                        ] as [String: Any]),
+                        "required": AnyCodable(["action"]),
+                        "additionalProperties": AnyCodable(false)
+                    ]
+                )
+            ),
+            PcToolDef(
+                name: LocalToolService.manageScheduledTaskToolName,
+                description: "管理当前会话的定时任务：新增、列出、删除。定时任务用于在指定时间通知智能体执行某件事，可与待办工具配合使用。",
+                parameters: PcToolParameters(
+                    schema: [
+                        "type": AnyCodable("object"),
+                        "properties": AnyCodable([
+                            "action": [
+                                "type": "string",
+                                "description": "操作类型：add（新增）、list（列出）、delete（删除）",
+                                "enum": ["add", "list", "delete"]
+                            ],
+                            "title": [
+                                "type": "string",
+                                "description": "add 时必填，任务标题（提醒 AI 做什么）"
+                            ],
+                            "scheduledAt": [
+                                "type": "string",
+                                "description": "add 时必填，ISO8601 格式的计划触发时间"
+                            ],
+                            "isRecurring": [
+                                "type": "boolean",
+                                "description": "add 时可选，是否重复触发，默认 false"
+                            ],
+                            "recurrenceRule": [
+                                "type": "string",
+                                "description": "add 时可选，重复规则：daily（每天）、weekly（每周）、weekdays（工作日）"
+                            ],
+                            "taskId": [
+                                "type": "string",
+                                "description": "delete 时必填，任务标识"
+                            ]
+                        ] as [String: Any]),
+                        "required": AnyCodable(["action"]),
+                        "additionalProperties": AnyCodable(false)
+                    ]
+                )
+            ),
+            PcToolDef(
+                name: LocalToolService.manageMemoryToolName,
+                description: "管理关于用户的跨会话记忆：用户画像、长久记忆、灵魂行为规则。当用户明确要求记住、忘记或纠正关于自己的信息时调用。",
+                parameters: PcToolParameters(
+                    schema: [
+                        "type": AnyCodable("object"),
+                        "properties": AnyCodable([
+                            "action": [
+                                "type": "string",
+                                "description": "操作类型：add_profile（添加用户画像）、add_long_term（添加长久记忆）、add_soul_rule（添加行为规则）、delete（删除包含指定内容的记忆）",
+                                "enum": ["add_profile", "add_long_term", "add_soul_rule", "delete"]
+                            ],
+                            "content": [
+                                "type": "string",
+                                "description": "add 时必填，要保存的精炼内容；delete 时用于匹配要删除的记忆"
+                            ],
+                            "importance": [
+                                "type": "number",
+                                "description": "add 时可选，重要度 0.0~1.0，默认 0.7"
+                            ]
+                        ] as [String: Any]),
+                        "required": AnyCodable(["action", "content"]),
+                        "additionalProperties": AnyCodable(false)
+                    ]
+                )
             )
-        ),
-        PcToolDef(
-            name: LocalToolService.calendarEventsToolName,
-            description: "查询未来一段时间内的系统日历日程。仅在用户明确询问日程时使用，需要完整日历访问权限。",
-            parameters: PcToolParameters(
-                schema: [
-                    "type": AnyCodable("object"),
-                    "properties": AnyCodable([
-                        "days": [
-                            "type": "integer",
-                            "description": "从今天开始查询的天数，范围 1 到 30",
-                            "minimum": 1,
-                            "maximum": 30
-                        ],
-                        "limit": [
-                            "type": "integer",
-                            "description": "最多返回数量，范围 1 到 50",
-                            "minimum": 1,
-                            "maximum": 50
-                        ]
-                    ] as [String: Any]),
-                    "additionalProperties": AnyCodable(false)
-                ]
-            )
-        ),
-        PcToolDef(
-            name: LocalToolService.healthInfoToolName,
-            description: "获取今日健康与运动数据，包括步数、心率、睡眠时长、活动能量和步行距离。用户询问健康、运动、睡眠或身体数据时使用，需要健康访问权限。",
-            parameters: LocalToolService.emptyParameters()
-        )
-    ]
+        ]
+    }()
 
     /**
      * 判断工具是否由本机执行。
@@ -199,6 +317,12 @@ final class LocalToolService {
             data = try await calendarEvents(args: args)
         case Self.healthInfoToolName:
             data = try await healthInfo()
+        case Self.manageTodoToolName:
+            data = try manageTodo(args: args)
+        case Self.manageScheduledTaskToolName:
+            data = try manageScheduledTask(args: args)
+        case Self.manageMemoryToolName:
+            data = try manageMemory(args: args)
         default:
             throw LocalToolError.unsupportedTool(toolName)
         }
@@ -231,6 +355,12 @@ final class LocalToolService {
             return "查询日历日程"
         case healthInfoToolName:
             return "查询健康数据"
+        case manageTodoToolName:
+            return "管理待办事项"
+        case manageScheduledTaskToolName:
+            return "管理定时任务"
+        case manageMemoryToolName:
+            return "管理记忆"
         default:
             return toolName
         }
@@ -261,6 +391,12 @@ final class LocalToolService {
             return "calendar"
         case healthInfoToolName:
             return "heart.fill"
+        case manageTodoToolName:
+            return "checklist"
+        case manageScheduledTaskToolName:
+            return "clock.badge.checkmark"
+        case manageMemoryToolName:
+            return "brain.head.profile"
         default:
             return nil
         }
@@ -286,10 +422,11 @@ final class LocalToolService {
      * 获取本机工具成功提示。
      *
      * @param toolName 工具名
+     * @param result 工具返回数据，用于生成与具体操作对应的提示
      * @returns 工具成功提示，不是本机工具时返回空
      * @author xiangwei
      */
-    static func successSummary(for toolName: String) -> String? {
+    static func successSummary(for toolName: String, result: [String: Any]? = nil) -> String? {
         switch toolName {
         case currentTimeToolName:
             return "已获取当前系统时间"
@@ -307,8 +444,98 @@ final class LocalToolService {
             return "已获取日历日程"
         case healthInfoToolName:
             return "已获取健康数据"
+        case manageTodoToolName:
+            return todoSuccessSummary(result: result)
+        case manageScheduledTaskToolName:
+            return scheduledTaskSuccessSummary(result: result)
+        case manageMemoryToolName:
+            return memorySuccessSummary(result: result)
         default:
             return nil
+        }
+    }
+
+    /**
+     * 根据操作类型生成待办工具成功提示。
+     *
+     * @param result 工具返回数据
+     * @returns 对应操作的成功提示
+     * @author xiangwei
+     */
+    private static func todoSuccessSummary(result: [String: Any]?) -> String {
+        let action = (result?["action"] as? String)?.lowercased() ?? ""
+        switch action {
+        case "add":
+            if let title = result?["title"] as? String, !title.isEmpty {
+                return "已添加待办：\(title)"
+            }
+            return "已添加待办"
+        case "list":
+            let count = (result?["count"] as? Int) ?? 0
+            return "已列出 \(count) 条待办"
+        case "complete":
+            return "待办已标记完成"
+        case "delete":
+            return "待办已删除"
+        default:
+            return "待办事项已更新"
+        }
+    }
+
+    /**
+     * 根据操作类型生成定时任务工具成功提示。
+     *
+     * @param result 工具返回数据
+     * @returns 对应操作的成功提示
+     * @author xiangwei
+     */
+    private static func scheduledTaskSuccessSummary(result: [String: Any]?) -> String {
+        let action = (result?["action"] as? String)?.lowercased() ?? ""
+        switch action {
+        case "add":
+            if let title = result?["title"] as? String, !title.isEmpty {
+                return "已添加定时任务：\(title)"
+            }
+            return "已添加定时任务"
+        case "list":
+            let count = (result?["count"] as? Int) ?? 0
+            return "已列出 \(count) 条定时任务"
+        case "delete":
+            return "定时任务已删除"
+        default:
+            return "定时任务已更新"
+        }
+    }
+
+    /**
+     * 根据操作类型生成记忆工具成功提示。
+     *
+     * @param result 工具返回数据
+     * @returns 对应操作的成功提示
+     * @author xiangwei
+     */
+    private static func memorySuccessSummary(result: [String: Any]?) -> String {
+        let action = (result?["action"] as? String)?.lowercased() ?? ""
+        let category = result?["category"] as? String ?? ""
+        let content = result?["content"] as? String ?? ""
+        let prefix: String
+        switch category {
+        case MemoryCategory.userProfile.rawValue:
+            prefix = "画像"
+        case MemoryCategory.longTerm.rawValue:
+            prefix = "记忆"
+        case MemoryCategory.soul.rawValue:
+            prefix = "规则"
+        default:
+            prefix = "记忆"
+        }
+        switch action {
+        case "add_profile", "add_long_term", "add_soul_rule":
+            return content.isEmpty ? "已保存\(prefix)" : "已保存\(prefix)：\(content)"
+        case "delete":
+            return content.isEmpty ? "已删除\(prefix)" : "已删除\(prefix)：\(content)"
+        default:
+            return "记忆已更新"
         }
     }
 
@@ -326,6 +553,237 @@ final class LocalToolService {
                 "additionalProperties": AnyCodable(false)
             ]
         )
+    }
+
+    /**
+     * 管理待办事项。
+     *
+     * @param args 工具参数
+     * @returns 操作结果
+     * @throws 参数无效或执行失败
+     * @author xiangwei
+     */
+    private func manageTodo(args: [String: Any]) throws -> [String: Any] {
+        let action = try requiredStringArgument("action", from: args).lowercased()
+        let scheduler = TaskSchedulerService.shared
+
+        switch action {
+        case "add":
+            let title = try requiredStringArgument("title", from: args)
+            let item = try scheduler.addTodo(title: title)
+            return [
+                "action": action,
+                "todo_id": item.id.uuidString,
+                "title": item.title,
+                "is_completed": item.isCompleted
+            ]
+
+        case "list":
+            let includeCompleted = args["includeCompleted"] as? Bool ?? false
+            let items = scheduler.listTodos(includeCompleted: includeCompleted)
+            return [
+                "action": action,
+                "count": items.count,
+                "todos": items.map {
+                    [
+                        "id": $0.id.uuidString,
+                        "title": $0.title,
+                        "is_completed": $0.isCompleted,
+                        "created_at": iso8601String(from: $0.createdAt)
+                    ] as [String: Any]
+                }
+            ]
+
+        case "complete":
+            let todoIdString = try requiredStringArgument("todoId", from: args)
+            guard let todoId = UUID(uuidString: todoIdString) else {
+                throw LocalToolError.invalidArgument("todoId")
+            }
+            guard scheduler.completeTodo(id: todoId) else {
+                throw LocalToolError.todoNotFound(todoIdString)
+            }
+            return ["action": action, "todo_id": todoIdString, "is_completed": true]
+
+        case "delete":
+            let todoIdString = try requiredStringArgument("todoId", from: args)
+            guard let todoId = UUID(uuidString: todoIdString) else {
+                throw LocalToolError.invalidArgument("todoId")
+            }
+            guard scheduler.deleteTodo(id: todoId) else {
+                throw LocalToolError.todoNotFound(todoIdString)
+            }
+            return ["action": action, "todo_id": todoIdString, "deleted": true]
+
+        default:
+            throw LocalToolError.invalidArgument("action")
+        }
+    }
+
+    /**
+     * 管理定时任务。
+     *
+     * @param args 工具参数
+     * @returns 操作结果
+     * @throws 参数无效或执行失败
+     * @author xiangwei
+     */
+    private func manageScheduledTask(args: [String: Any]) throws -> [String: Any] {
+        let action = try requiredStringArgument("action", from: args).lowercased()
+        let scheduler = TaskSchedulerService.shared
+
+        switch action {
+        case "add":
+            let title = try requiredStringArgument("title", from: args)
+            let scheduledAtString = try requiredStringArgument("scheduledAt", from: args)
+            guard let scheduledAt = parseISO8601Date(scheduledAtString) else {
+                throw LocalToolError.invalidArgument("scheduledAt")
+            }
+            let isRecurring = args["isRecurring"] as? Bool ?? false
+            let recurrenceRule = (args["recurrenceRule"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let task = try scheduler.addScheduledTask(
+                title: title,
+                scheduledAt: scheduledAt,
+                isRecurring: isRecurring,
+                recurrenceRule: recurrenceRule?.isEmpty == false ? recurrenceRule : nil
+            )
+            return [
+                "action": action,
+                "task_id": task.id.uuidString,
+                "title": task.title,
+                "scheduled_at": iso8601String(from: task.scheduledAt),
+                "is_recurring": task.isRecurring,
+                "recurrence_rule": task.recurrenceRule ?? NSNull()
+            ]
+
+        case "list":
+            let tasks = scheduler.listScheduledTasks()
+            return [
+                "action": action,
+                "count": tasks.count,
+                "tasks": tasks.map {
+                    [
+                        "id": $0.id.uuidString,
+                        "title": $0.title,
+                        "scheduled_at": iso8601String(from: $0.scheduledAt),
+                        "is_recurring": $0.isRecurring,
+                        "recurrence_rule": $0.recurrenceRule ?? NSNull(),
+                        "is_enabled": $0.isEnabled
+                    ] as [String: Any]
+                }
+            ]
+
+        case "delete":
+            let taskIdString = try requiredStringArgument("taskId", from: args)
+            guard let taskId = UUID(uuidString: taskIdString) else {
+                throw LocalToolError.invalidArgument("taskId")
+            }
+            guard scheduler.deleteScheduledTask(id: taskId) else {
+                throw LocalToolError.scheduledTaskNotFound(taskIdString)
+            }
+            return ["action": action, "task_id": taskIdString, "deleted": true]
+
+        default:
+            throw LocalToolError.invalidArgument("action")
+        }
+    }
+
+    /**
+     * 管理记忆条目。
+     *
+     * @param args 工具参数
+     * @returns 操作结果
+     * @throws 参数无效或执行失败
+     * @author xiangwei
+     */
+    private func manageMemory(args: [String: Any]) throws -> [String: Any] {
+        let action = try requiredStringArgument("action", from: args).lowercased()
+        let content = try requiredStringArgument("content", from: args)
+        let importance = (args["importance"] as? Double) ?? 0.7
+        let normalizedImportance = max(0, min(1, importance))
+
+        switch action {
+        case "add_profile":
+            memoryManager.addProfile(
+                content: content,
+                source: .rememberCommand,
+                confidence: 0.9
+            )
+            return [
+                "action": action,
+                "category": MemoryCategory.userProfile.rawValue,
+                "content": content
+            ]
+
+        case "add_long_term":
+            memoryManager.addLongTerm(
+                content: content,
+                importance: normalizedImportance,
+                source: .rememberCommand,
+                confidence: 0.9
+            )
+            return [
+                "action": action,
+                "category": MemoryCategory.longTerm.rawValue,
+                "content": content
+            ]
+
+        case "add_soul_rule":
+            memoryManager.appendSoul(content: content, source: .rememberCommand)
+            return [
+                "action": action,
+                "category": MemoryCategory.soul.rawValue,
+                "content": content
+            ]
+
+        case "delete":
+            guard let item = findMemoryItem(containing: content) else {
+                throw LocalToolError.memoryNotFound(content)
+            }
+            memoryManager.deleteItem(item)
+            return [
+                "action": action,
+                "category": item.category.rawValue,
+                "content": item.content
+            ]
+
+        default:
+            throw LocalToolError.invalidArgument("action")
+        }
+    }
+
+    /**
+     * 查找包含指定内容的记忆条目。
+     *
+     * @param content 搜索内容
+     * @returns 匹配到的条目，无则返回 nil
+     * @author xiangwei
+     */
+    private func findMemoryItem(containing content: String) -> MemoryItem? {
+        let normalized = content.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let allItems = memoryManager.profileItems + memoryManager.longTermItems + memoryManager.soulRuleItems
+        return allItems.first { item in
+            let itemContent = item.content.lowercased()
+            return itemContent.contains(normalized) || normalized.contains(itemContent)
+        }
+    }
+
+    /**
+     * 解析 ISO8601 日期字符串。
+     *
+     * @param string ISO8601 字符串
+     * @returns 解析后的日期，失败返回空
+     * @author xiangwei
+     */
+    private func parseISO8601Date(_ string: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: string) {
+            return date
+        }
+        // 兼容不带毫秒的形式
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: string)
     }
 
     /**
@@ -401,7 +859,7 @@ final class LocalToolService {
         let bundle = Bundle.main
         let appName = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
-            ?? "笔笔"
+            ?? "星枢"
 
         return [
             "app_name": appName,
@@ -579,6 +1037,10 @@ final class LocalToolService {
     /**
      * 确保已获得健康数据读取权限。
      *
+     * 注意：authorizationStatus(for:) 只能反映写入（share）权限状态，
+     * 无法反映读取权限。读取权限是否被授予只能通过查询结果间接判断，
+     * 因此这里使用 statusForAuthorizationRequest 仅判断是否需要弹窗请求。
+     *
      * @throws 健康权限被拒绝或设备不支持
      * @author xiangwei
      */
@@ -587,23 +1049,33 @@ final class LocalToolService {
             throw LocalToolError.healthDataUnavailable("设备不支持健康数据")
         }
 
-        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
-            throw LocalToolError.healthDataUnavailable("无法获取步数数据类型")
+        guard !healthDataTypes.isEmpty else {
+            throw LocalToolError.healthDataUnavailable("未配置健康数据类型")
         }
 
-        let status = healthStore.authorizationStatus(for: stepType)
-        switch status {
-        case .sharingAuthorized:
+        let requestStatus = try await healthStore.statusForAuthorizationRequest(
+            toShare: [],
+            read: healthDataTypes
+        )
+        switch requestStatus {
+        case .unnecessary:
+            // 用户已对这些类型做出过授权决定，直接查询即可；
+            // 若用户实际拒绝了读取，后续查询会返回空结果，不会暴露隐私。
             return
-        case .notDetermined:
-            // requestAuthorization 不返回授权结论，必须在用户响应弹窗后再次查询授权状态
+        case .shouldRequest:
+            // 系统需要展示授权表单，发起请求。
+            // requestAuthorization 的 Bool 返回值仅表示系统调用是否成功，
+            // 不表示用户是否授权；真正的读取结果由后续 HKQuery 决定。
             try await healthStore.requestAuthorization(toShare: [], read: healthDataTypes)
-            let newStatus = healthStore.authorizationStatus(for: stepType)
-            guard newStatus == .sharingAuthorized else {
-                throw LocalToolError.permissionDenied("健康")
+            let finalStatus = try await healthStore.statusForAuthorizationRequest(
+                toShare: [],
+                read: healthDataTypes
+            )
+            guard finalStatus == .unnecessary else {
+                throw LocalToolError.permissionUnavailable("健康")
             }
-        case .sharingDenied:
-            throw LocalToolError.permissionDenied("健康")
+        case .unknown:
+            throw LocalToolError.permissionUnavailable("健康")
         @unknown default:
             throw LocalToolError.permissionUnavailable("健康")
         }
@@ -1096,6 +1568,15 @@ private enum LocalToolError: LocalizedError {
     /// 健康数据查询失败。
     case healthDataUnavailable(String)
 
+    /// 待办事项不存在。
+    case todoNotFound(String)
+
+    /// 定时任务不存在。
+    case scheduledTaskNotFound(String)
+
+    /// 记忆条目不存在。
+    case memoryNotFound(String)
+
     var errorDescription: String? {
         switch self {
         case .unsupportedTool(let toolName):
@@ -1103,7 +1584,7 @@ private enum LocalToolError: LocalizedError {
         case .invalidArgument(let argumentName):
             return "工具参数 \(argumentName) 不能为空"
         case .permissionDenied(let permissionName):
-            return "未获得\(permissionName)权限，请在系统设置的隐私与安全性中允许笔笔访问"
+            return "未获得\(permissionName)权限，请在系统设置的隐私与安全性中允许星枢访问"
         case .permissionUnavailable(let permissionName):
             return "当前无法确认\(permissionName)权限状态"
         case .locationUnavailable:
@@ -1112,6 +1593,12 @@ private enum LocalToolError: LocalizedError {
             return "无法计算日历查询时间范围"
         case .healthDataUnavailable(let detail):
             return "无法获取健康数据: \(detail)"
+        case .todoNotFound(let id):
+            return "待办事项不存在: \(id)"
+        case .scheduledTaskNotFound(let id):
+            return "定时任务不存在: \(id)"
+        case .memoryNotFound(let content):
+            return "未找到包含「\(content)」的记忆"
         }
     }
 }

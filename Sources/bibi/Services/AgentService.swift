@@ -41,7 +41,7 @@ final class AgentService {
 
     /// 核心人格与通用行为准则（所有连接状态下共用）。
     private static let basePersonalityPrompt = """
-        你是「小笔」，运行在用户 iPhone 上的全能智能体。你的定位类似钢铁侠的贾维斯——一位可靠、从容、近乎无所不能的私人助理，守在你身边，为你把事情办妥。你既能聊知识、算数据、帮思考，也能调用工具替用户查信息、办事情，并不局限于某一类功能。
+        你是「星枢」，运行在用户 iPhone 上的全能智能体。你的定位类似钢铁侠的贾维斯——一位可靠、从容、近乎无所不能的私人助理，守在用户身边，为用户把事情办妥。你既能聊知识、算数据、帮思考，也能调用工具替用户查信息、办事情，并不局限于某一类功能。
 
         ## 说话方式
         - 说话要像人，有温度，像熟悉你的老朋友，而不是客服机器人。可以偶尔带点幽默和调侃。
@@ -52,7 +52,7 @@ final class AgentService {
 
         ## 工具使用准则
         - 你能调用的工具都会通过 function calling 注入，工具列表就是你的全部能力边界，不要假设工具之外的能力。
-        - 涉及数据的问题（时间、设备状态、财务数据、健康数据等），必须先调用对应工具获取真实结果，绝不凭记忆或猜测编造数字。
+        - 涉及实时数据的问题（时间、设备状态、电池、位置、联系人、日历、健康数据等），必须先调用对应工具获取真实结果，绝不凭记忆或猜测编造数字。
         - 以工具返回的结果为准：结果包含什么就说什么，不脑补、不夸大；结果缺失的字段如实说明。
         - 工具执行失败时，诚实告知失败原因，并给出用户能做的下一步（如检查权限、连接 PC、重试等）。
         - 识别到用户意图，可直接调用工具获取信息，不要让用户强调调用什么工具。
@@ -60,24 +60,39 @@ final class AgentService {
         ## 做不到的时候
         - 你确实有边界：无法联网获取工具之外的信息、无法访问未注入的数据、无法执行未提供的操作。
         - 做不到就直说，简短解释为什么做不到，然后给出可行的替代方案，而不是含糊其辞或强行编造。
+
+        ## 任务要求
+        - 当处理一个任务的时候，必须对最终结果进行验证，如果结果不符合要求，必须进行修正，直到结果符合要求为止。
+        - 当任务使用单个工具无法完成时，必须使用多个工具规划好步骤进行组合完成任务，直到任务完成为止。
+
+        ## 记忆管理
+        - 你拥有 manage_memory 工具，用于跨会话记住关于用户的事实、偏好和行为规则。
+        - 当用户明确说"记住...""别忘了...""以后...""纠正一下..."等时，应调用 manage_memory 将信息存入合适的类别：
+          - add_profile：用户的稳定画像（职业、习惯、偏好等）
+          - add_long_term：重要事实、事件、目标
+          - add_soul_rule：用户对你说话/行为方式的明确要求
+        - 保存前先提炼成精炼、完整、第三人称的陈述，去掉口语化表达。
+        - 用户要求忘记或纠正某条记忆时，使用 delete 操作删除匹配内容。
+
+        ## 特殊要求
+        - 思考消息要使用中文。
         """
 
     /// 已连接 PC 时的能力补充说明。
     private static let connectedCapabilityPrompt = """
 
         ## 当前能力
-        - 已连接到 PC 端笔笔服务，可使用记账等电脑端工具查询和操作数据，具体工具已注入到 function calling 中。
-        - 用户询问财务数据时，使用记账工具查询，不要编造。
-        - 金额以元为单位展示，例如 128000 分 = ¥1,280.00。
-        - 除此之外，继续按一般全能助理处理用户的各类问题。
+        - 已连接到 PC 端星枢服务，可使用电脑端工具查询和操作数据，具体工具已注入到 function calling 中。
+        - 涉及电脑端实时数据或操作时，先调用已注入的对应工具，不要凭记忆猜测。
+        - 除此之外，继续按全能智能体处理用户的各类问题。
         """
 
     /// 未连接 PC 时的能力补充说明。
     private static let disconnectedCapabilityPrompt = """
 
         ## 当前能力
-        - 当前未连接到 PC 端笔笔服务，无法使用电脑端记账等工具。
-        - 用户要求查询记账数据或执行记账操作时，简短说明当前无法访问数据，并提醒其打开电脑端笔笔且确保手机与电脑处于同一 WiFi。
+        - 当前未连接到 PC 端星枢服务，无法使用电脑端工具。
+        - 用户要求查询电脑端数据或执行电脑端操作时，简短说明当前无法访问，并提醒其打开电脑端星枢且确保手机与电脑处于同一 WiFi。
         - 用户询问一般性问题时直接回答，不要反复说明连接状态，也不要因此自贬能力——本机工具仍然可用：时间、设备信息、电池、应用信息、位置、联系人、日历、健康数据等。
         """
 
@@ -104,6 +119,9 @@ final class AgentService {
 
     /// 记忆管理器
     let memory: MemoryManager
+
+    /// 任务调度服务（待办与定时任务）
+    let taskScheduler: TaskSchedulerService
 
     /// 当前对话消息列表
     private(set) var messages: [ChatMessage] = []
@@ -153,7 +171,8 @@ final class AgentService {
         localTools: LocalToolService,
         mcpClient: MCPClient,
         settings: SettingsStore,
-        memory: MemoryManager
+        memory: MemoryManager,
+        taskScheduler: TaskSchedulerService
     ) {
         self.connection = connection
         self.conversations = conversations
@@ -163,6 +182,7 @@ final class AgentService {
         self.mcpClient = mcpClient
         self.settings = settings
         self.memory = memory
+        self.taskScheduler = taskScheduler
     }
 
     /**
@@ -178,6 +198,7 @@ final class AgentService {
             // 自动恢复上次打开的会话消息
             if let conversationId = conversations.currentConversationId {
                 messages = conversations.switchConversation(id: conversationId)
+                taskScheduler.load(for: conversationId)
                 lastExtractedVisibleCount = 0
             }
         }
@@ -220,11 +241,13 @@ final class AgentService {
         cancelProcessing()
         messages.removeAll()
         lastExtractedVisibleCount = 0
+        taskScheduler.unload()
         conversations.loadConversations(for: userId)
         memory.loadMemories(for: userId)
         // 自动恢复新用户上次打开的会话消息
         if let conversationId = conversations.currentConversationId {
             messages = conversations.switchConversation(id: conversationId)
+            taskScheduler.load(for: conversationId)
             lastExtractedVisibleCount = 0
         }
     }
@@ -288,6 +311,10 @@ final class AgentService {
                 title: conversationTitle(from: text),
                 ownerId: localUser.id
             )
+            // 新会话创建后立即加载该会话的任务调度数据
+            if let conversationId = conversations.currentConversationId {
+                taskScheduler.load(for: conversationId)
+            }
         }
 
         let firstUnsavedIndex = messages.count
@@ -300,8 +327,6 @@ final class AgentService {
         )
         activeRequestId = requestId
         messages.append(.user(text))
-        // 检测"记住..."指令，异步交给 AI 提炼后写入长久记忆（不阻塞对话，也不在界面显示）
-        handleRememberInstruction(from: text)
         // 预创建空正文的助手消息，用于在首个内容到达前展示"思考中"状态
         messages.append(.assistant(""))
         isProcessing = true
@@ -362,9 +387,13 @@ final class AgentService {
 
         if conversations.currentConversationId == nil {
             conversations.createConversation(
-                title: "小笔的主动消息",
+                title: "星枢的主动消息",
                 ownerId: localUser.id
             )
+            // 新会话创建后立即加载该会话的任务调度数据
+            if let conversationId = conversations.currentConversationId {
+                taskScheduler.load(for: conversationId)
+            }
         }
 
         let firstUnsavedIndex = messages.count
@@ -394,7 +423,7 @@ final class AgentService {
         let pcConnected = connection.state == .connected
         llmMessages.append(.user("""
             【主动联系】
-            现在是你主动联系用户的时候，请以「小笔」的身份给用户发一条消息。
+            现在是你主动联系用户的时候，请以「星枢」的身份给用户发一条消息。
             触发原因：\(reason)
             当前时段：\(Self.currentPeriodHint)
             你可以参考上面的历史对话和关于用户的记忆，说一句自然、像朋友随口说的话。
@@ -444,6 +473,24 @@ final class AgentService {
             cancelProcessing()
         }
         messages = conversations.switchConversation(id: id)
+        taskScheduler.load(for: id)
+        lastExtractedVisibleCount = 0
+    }
+
+    /**
+     * 开始新对话。
+     *
+     * 清空当前消息并释放当前会话，下一条发送的消息会创建新会话。
+     *
+     * @author xiangwei
+     */
+    func startNewConversation() {
+        if isProcessing {
+            cancelProcessing()
+        }
+        messages.removeAll()
+        conversations.clearCurrentConversation()
+        taskScheduler.unload()
         lastExtractedVisibleCount = 0
     }
 
@@ -459,6 +506,7 @@ final class AgentService {
         if isCurrentConversation {
             messages = []
             lastExtractedVisibleCount = 0
+            taskScheduler.unload()
         }
     }
 
@@ -687,7 +735,7 @@ final class AgentService {
         if settings.isDebugEnabled, !settings.customSystemPrompt.isEmpty {
             systemPrompt = settings.customSystemPrompt
         } else if pcConnected {
-            // 已连接 PC：核心人格 + 记账能力说明
+            // 已连接 PC：核心人格 + 电脑端能力说明
             systemPrompt = Self.basePersonalityPrompt + Self.connectedCapabilityPrompt
         } else {
             // 未连接 PC：核心人格 + 本机能力说明
@@ -696,6 +744,9 @@ final class AgentService {
 
         var result: [LLMMessage] = [.system(systemPrompt)]
 
+        // 取最近一条用户消息作为长久记忆检索查询
+        let currentQuery = messages.last { $0.role == .user }?.text
+
         // 注入智能体记忆：灵魂设定 / 用户画像 / 长久记忆
         if let soulPrompt = memory.soulPrompt() {
             result.append(.system(soulPrompt))
@@ -703,7 +754,7 @@ final class AgentService {
         if let profilePrompt = memory.profilePrompt() {
             result.append(.system(profilePrompt))
         }
-        if let longTermPrompt = memory.longTermPrompt() {
+        if let longTermPrompt = memory.longTermPrompt(for: currentQuery) {
             result.append(.system(longTermPrompt))
         }
 
@@ -867,8 +918,9 @@ final class AgentService {
         let status: ToolCallStatus = result.success ? .succeeded : .failed
         updateToolCall(id: toolMessage.id, status: status)
 
+        let resultData = result.data?.value as? [String: Any]
         let summary = result.success
-            ? toolSuccessSummary(toolName: toolCall.name)
+            ? toolSuccessSummary(toolName: toolCall.name, resultData: resultData)
             : "\(LocalToolService.displayName(for: toolCall.name)) 执行失败：\(result.error?.message ?? "未知错误")"
         messages.append(.toolResult(name: toolCall.name, summary: summary))
 
@@ -988,11 +1040,12 @@ final class AgentService {
      * 获取工具成功提示。
      *
      * @param toolName 工具名
+     * @param resultData 工具返回数据，用于生成本机工具的操作级提示
      * @returns 工具成功提示
      * @author xiangwei
      */
-    private func toolSuccessSummary(toolName: String) -> String {
-        if let localToolSummary = LocalToolService.successSummary(for: toolName) {
+    private func toolSuccessSummary(toolName: String, resultData: [String: Any]?) -> String {
+        if let localToolSummary = LocalToolService.successSummary(for: toolName, result: resultData) {
             return localToolSummary
         }
         return "\(toolName) 执行成功"
@@ -1014,88 +1067,6 @@ final class AgentService {
     }
 
     // MARK: - 记忆处理
-
-    /**
-     * 处理"记住..."指令。
-     *
-     * 从用户消息中提取要记住的内容，交给 AI 提炼成精炼记忆后写入长久记忆。
-     * 提炼在后台任务中执行，不阻塞对话流程，也不在聊天界面显示任何系统提示。
-     *
-     * @param text 用户消息
-     * @author xiangwei
-     */
-    private func handleRememberInstruction(from text: String) {
-        guard let content = MemoryManager.extractRememberContent(from: text) else { return }
-        Task {
-            let refined = await refineMemoryContent(content)
-            // 提炼成功用提炼结果，失败降级为原文
-            memory.addLongTerm(content: refined ?? content, importance: 0.8)
-            await AppLogger.shared.log(
-                .info,
-                category: "memory",
-                message: "用户主动记忆已保存",
-                metadata: [
-                    "refined": "\(refined != nil)",
-                    "length": "\(refined?.count ?? content.count)"
-                ]
-            )
-        }
-    }
-
-    /**
-     * 调用 AI 将用户原文提炼为精炼记忆。
-     *
-     * 使用非流式单轮请求，只输出提炼后的记忆条目，失败时返回 nil。
-     *
-     * @param content 用户原文（"记住"之后的内容）
-     * @returns 提炼后的记忆文本
-     * @author xiangwei
-     */
-    private func refineMemoryContent(_ content: String) async -> String? {
-        let apiKey = KeychainHelper.shared.readAPIKey() ?? ""
-        guard !apiKey.isEmpty else { return nil }
-
-        let refinePrompt = """
-            用户要求记住以下内容，请提炼成一条精炼、完整的记忆条目。
-            要求：保留关键信息（时间、人物、事件、偏好等），去掉口语化表达，
-            使用第三人称陈述，控制在 50 字以内，只输出记忆条目本身，不要任何解释。
-
-            原始内容：\(content)
-            """
-
-        do {
-            let stream = LLMProvider.chat(
-                model: defaultModel,
-                apiKey: apiKey,
-                messages: [
-                    .system("你是记忆提炼助手，只输出提炼后的记忆条目，不要输出任何解释。"),
-                    .user(refinePrompt)
-                ],
-                tools: nil,
-                stream: false,
-                traceId: UUID().uuidString.lowercased(),
-                thinkingEnabled: false
-            )
-
-            var output = ""
-            for try await event in stream {
-                if case .chunk(let text) = event {
-                    output += text
-                }
-            }
-
-            let refined = output
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return refined.isEmpty ? nil : refined
-        } catch {
-            await AppLogger.shared.log(
-                .warning,
-                category: "memory",
-                message: "记忆提炼失败，降级保存原文: \(error.localizedDescription)"
-            )
-            return nil
-        }
-    }
 
     /**
      * 判断是否需要为当前对话提炼记忆。
@@ -1127,8 +1098,9 @@ final class AgentService {
      * 将最近对话交给 LLM 做一次非流式提取，返回 JSON 对象：
      * - user_profile：用户的稳定画像信息
      * - long_term：值得长期记住的重要事实
-     * - soul_rules：用户对小笔行为/说话风格的明确指导
-     * 解析后分别写入对应记忆类别，失败时静默降级。
+     * - soul_rules：用户对星枢行为/说话风格的明确指导
+     * 每条记忆附带置信度，低置信度记忆会被丢弃。
+     * 解析后分别写入对应记忆类别，并触发一次冗余合并。
      *
      * @author xiangwei
      */
@@ -1137,8 +1109,12 @@ final class AgentService {
 
         // 按窗口阈值收集最近对话作为提取素材（最多 40 条，避免单次提炼上下文过大）
         let sampleSize = min(max(settings.conversationWindowSize, 8), 40)
-        let recentLines = messages
-            .suffix(sampleSize)
+        let sampleMessages = Array(messages.suffix(sampleSize))
+
+        // 窗口内没有用户消息时不提炼，避免从纯助手/工具消息中硬抽
+        guard sampleMessages.contains(where: { $0.role == .user }) else { return }
+
+        let recentLines = sampleMessages
             .compactMap { message -> String? in
                 let content = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !content.isEmpty else { return nil }
@@ -1157,15 +1133,29 @@ final class AgentService {
         guard !apiKey.isEmpty else { return }
 
         let extractPrompt = """
-            你是记忆提炼助手。下面是用户与智能体「小笔」的最近对话。
-            请从中提炼三类信息，只输出 JSON 对象，不要输出任何解释：
+            你是记忆提炼助手。请从下方用户与智能体「星枢」的最近对话中提炼三类信息。
+            必须只输出一个 JSON 对象，不要输出 markdown 代码块、不要输出任何解释文字。
+
+            输出格式严格如下（keys 必须完整，顺序不限）：
+            {
+              "user_profile": [{"content": "...", "confidence": 0.8}],
+              "long_term": [{"content": "...", "confidence": 0.7}],
+              "soul_rules": [{"content": "...", "confidence": 0.9}]
+            }
 
             1. user_profile：关于用户的稳定画像信息（身份、职业、习惯、偏好等），忽略一次性提问。
             2. long_term：需要跨会话长期记住的重要事实、事件、明确需求或目标。
-            3. soul_rules：用户对「小笔」行为或说话方式的明确指导或纠正（例如"说话简短点""别用敬语"），没有则省略。
+            3. soul_rules：用户对「星枢」行为或说话方式的明确指导或纠正（例如"说话简短点""别用敬语"），没有则省略。
 
-            输出格式：{"user_profile": ["..."], "long_term": ["..."], "soul_rules": ["..."]}
-            某类没有内容时输出空数组。
+            confidence 取值 0.0~1.0，表示该记忆值得长期保存的把握：
+            - 0.8+：用户明确陈述的稳定事实或明确指令
+            - 0.6~0.8：较明显可推断的信息
+            - 0.4~0.6：有一定依据但不确定
+            - 低于 0.4 不要输出
+
+            如果没有任何可提炼内容，三类都输出空数组：
+            {"user_profile": [], "long_term": [], "soul_rules": []}
+            禁止输出顶层数组，禁止输出 null，禁止省略任何一个 key，每条记忆必须同时包含 content 和 confidence。
 
             对话内容：
             \(recentLines.joined(separator: "\n"))
@@ -1176,13 +1166,14 @@ final class AgentService {
                 model: defaultModel,
                 apiKey: apiKey,
                 messages: [
-                    .system("你是记忆提炼助手，只输出 JSON 对象，不要输出任何解释。"),
+                    .system("你是记忆提炼助手，必须只输出 JSON 对象，禁止输出数组、null、markdown 代码块或任何解释文字。"),
                     .user(extractPrompt)
                 ],
                 tools: nil,
                 stream: false,
                 traceId: UUID().uuidString.lowercased(),
-                thinkingEnabled: false
+                thinkingEnabled: false,
+                responseFormat: ["type": "json_object"]
             )
 
             var output = ""
@@ -1192,30 +1183,48 @@ final class AgentService {
                 }
             }
 
-            guard let data = output
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .data(using: .utf8),
-                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let json = Self.parseMemoryJSON(trimmedOutput) else {
+                await AppLogger.shared.log(
+                    .warning,
+                    category: "memory",
+                    message: "对话记忆提炼结果解析失败",
+                    metadata: [
+                        "owner_id": localUser.id.uuidString,
+                        "output_preview": String(trimmedOutput.prefix(200))
+                    ]
+                )
                 return
             }
 
             // 用户画像提炼
-            let profiles = (json["user_profile"] as? [String] ?? []).filter { !$0.isEmpty }
-            for content in profiles {
-                memory.addProfile(content: content)
+            let profiles = Self.parseMemoryEntries(from: json["user_profile"])
+            for entry in profiles {
+                memory.addProfile(content: entry.content, source: .autoExtracted, confidence: entry.confidence)
             }
 
             // 长久记忆提炼
-            let longTerms = (json["long_term"] as? [String] ?? []).filter { !$0.isEmpty }
-            for content in longTerms {
-                memory.addLongTerm(content: content, importance: 0.6)
+            let longTerms = Self.parseMemoryEntries(from: json["long_term"])
+            for entry in longTerms {
+                let importance = 0.5 + entry.confidence * 0.4
+                memory.addLongTerm(
+                    content: entry.content,
+                    importance: importance,
+                    source: .autoExtracted,
+                    confidence: entry.confidence
+                )
             }
 
-            // 灵魂规则提炼（追加合并，不覆盖用户手写内容）
-            let soulRules = (json["soul_rules"] as? [String] ?? []).filter { !$0.isEmpty }
-            for rule in soulRules {
-                memory.appendSoul(content: rule)
+            // 灵魂规则提炼
+            let soulRules = Self.parseMemoryEntries(from: json["soul_rules"])
+            for entry in soulRules where entry.confidence >= 0.7 {
+                memory.appendSoul(content: entry.content)
             }
+
+            // 合并冗余记忆
+            memory.consolidate(category: .userProfile)
+            memory.consolidate(category: .longTerm)
+            memory.consolidate(category: .soul)
 
             let totalCount = profiles.count + longTerms.count + soulRules.count
             await AppLogger.shared.log(
@@ -1236,6 +1245,77 @@ final class AgentService {
                 category: "memory",
                 message: "对话记忆提炼失败: \(error.localizedDescription)"
             )
+        }
+    }
+
+    /**
+     * 解析记忆提炼输出为字典。
+     *
+     * 支持以下情况：
+     * - 标准 JSON 对象 {"user_profile": [...], "long_term": [...], "soul_rules": [...]}
+     * - 模型错误返回的空数组 `[]`，视为三类均为空
+     * - 被 markdown 代码块包裹的 JSON
+     * 解析失败时返回 nil。
+     *
+     * @param output 模型原始输出
+     * @returns 解析后的字典，失败返回 nil
+     * @author xiangwei
+     */
+    private static func parseMemoryJSON(_ output: String) -> [String: Any]? {
+        var cleaned = output
+
+        // 去掉可能的 markdown 代码块标记
+        if cleaned.hasPrefix("```") {
+            cleaned = cleaned
+                .replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        guard let data = cleaned.data(using: .utf8) else { return nil }
+
+        do {
+            let raw = try JSONSerialization.jsonObject(with: data)
+
+            // 如果是空数组，按无内容处理
+            if let array = raw as? [Any], array.isEmpty {
+                return [
+                    "user_profile": [String](),
+                    "long_term": [String](),
+                    "soul_rules": [String]()
+                ]
+            }
+
+            // 必须是字典
+            guard let dict = raw as? [String: Any] else { return nil }
+            return dict
+        } catch {
+            return nil
+        }
+    }
+
+    /**
+     * 从 JSON 值中解析记忆条目列表。
+     *
+     * 兼容旧版字符串数组与新版的对象数组（含 content 和 confidence）。
+     *
+     * @param value JSON 值
+     * @returns 记忆条目数组
+     * @author xiangwei
+     */
+    private static func parseMemoryEntries(from value: Any?) -> [(content: String, confidence: Double)] {
+        guard let array = value as? [Any] else { return [] }
+
+        return array.compactMap { item in
+            if let text = item as? String {
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? nil : (trimmed, 0.7)
+            }
+            guard let dict = item as? [String: Any] else { return nil }
+            guard let content = (dict["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !content.isEmpty else { return nil }
+            let confidence = (dict["confidence"] as? Double) ?? 0.7
+            return (content, confidence)
         }
     }
 }

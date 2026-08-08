@@ -66,7 +66,58 @@ final class DatabaseManager {
             // 按用户与类别建立查询索引，加快记忆注入时的读取
             try db.create(indexOn: "memory_item", columns: ["owner_id", "category"])
         }
-        try m.migrate(dbQueue!)
+        m.registerMigration("v5") { db in
+            // 待办事项表，按会话绑定
+            try db.create(table: "todo_item", ifNotExists: true) { t in
+                t.column("id", .text).primaryKey()
+                t.column("conversation_id", .text).notNull()
+                t.column("title", .text).notNull()
+                t.column("is_completed", .boolean).notNull().defaults(to: false)
+                t.column("created_at", .datetime).notNull()
+                t.column("updated_at", .datetime).notNull()
+            }
+            // 定时任务表，按会话绑定
+            try db.create(table: "scheduled_task", ifNotExists: true) { t in
+                t.column("id", .text).primaryKey()
+                t.column("conversation_id", .text).notNull()
+                t.column("title", .text).notNull()
+                t.column("scheduled_at", .datetime).notNull()
+                t.column("is_recurring", .boolean).notNull().defaults(to: false)
+                t.column("recurrence_rule", .text)
+                t.column("is_enabled", .boolean).notNull().defaults(to: true)
+                t.column("created_at", .datetime).notNull()
+                t.column("updated_at", .datetime).notNull()
+            }
+            try db.create(indexOn: "todo_item", columns: ["conversation_id"])
+            try db.create(indexOn: "scheduled_task", columns: ["conversation_id", "is_enabled", "scheduled_at"])
+        }
+        m.registerMigration("v6") { db in
+            // 记忆系统改造：增加来源、置信度、引用计数与最近引用时间
+            // 使用原生 SQL 并检查列是否存在，避免缺列导致读取失败、重复列导致迁移卡死
+            let existingColumns = try db.columns(in: "memory_item").map { $0.name }
+            if !existingColumns.contains("source") {
+                try db.execute(sql: "ALTER TABLE memory_item ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'")
+            }
+            if !existingColumns.contains("confidence") {
+                try db.execute(sql: "ALTER TABLE memory_item ADD COLUMN confidence REAL NOT NULL DEFAULT 1.0")
+            }
+            if !existingColumns.contains("access_count") {
+                try db.execute(sql: "ALTER TABLE memory_item ADD COLUMN access_count INTEGER NOT NULL DEFAULT 0")
+            }
+            if !existingColumns.contains("last_accessed_at") {
+                try db.execute(sql: "ALTER TABLE memory_item ADD COLUMN last_accessed_at DATETIME NOT NULL DEFAULT '2000-01-01 00:00:00'")
+            }
+        }
+        do {
+            try m.migrate(dbQueue!)
+        } catch {
+            // 迁移失败时记录日志，便于排查（数据库可能处于部分迁移状态）
+            let errorMessage = error.localizedDescription
+            Task {
+                await AppLogger.shared.log(.error, category: "database", message: "数据库迁移失败: \(errorMessage)")
+            }
+            throw error
+        }
     }
     func fetch<T: FetchableRecord & Decodable>(_ sql: String, args: StatementArguments = []) throws -> [T] {
         guard let q = dbQueue else { return [] }
@@ -107,6 +158,25 @@ final class DatabaseManager {
             // 同步清理该用户的全部智能体记忆
             try db.execute(
                 sql: "DELETE FROM memory_item WHERE owner_id = ?",
+                arguments: [id]
+            )
+            // 同步清理该用户的待办事项与定时任务（通过会话关联）
+            try db.execute(
+                sql: """
+                    DELETE FROM todo_item
+                    WHERE conversation_id IN (
+                        SELECT id FROM conversation WHERE owner_id = ?
+                    )
+                    """,
+                arguments: [id]
+            )
+            try db.execute(
+                sql: """
+                    DELETE FROM scheduled_task
+                    WHERE conversation_id IN (
+                        SELECT id FROM conversation WHERE owner_id = ?
+                    )
+                    """,
                 arguments: [id]
             )
         }

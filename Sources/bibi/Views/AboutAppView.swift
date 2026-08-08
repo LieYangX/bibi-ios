@@ -61,9 +61,9 @@ struct AboutAppView: View {
         VStack(spacing: 12) {
             brandIcon
 
-            Text("笔笔")
+            Text("星枢")
                 .font(.bibiLargeTitle)
-            Text("每一笔，都办得妥帖")
+            Text("让每件事，都办得妥帖")
                 .font(.bibiCaption)
                 .foregroundStyle(.secondary)
         }

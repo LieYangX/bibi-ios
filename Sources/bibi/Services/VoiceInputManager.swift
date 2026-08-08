@@ -6,6 +6,37 @@ import AVFoundation
 private let SpeechRecognitionCancelledCode = 216
 
 /**
+ * SFSpeechAudioBufferRecognitionRequest 的线程安全包装。
+ *
+ * 用于将识别请求跨隔离域传递到 nonisolated tap 闭包；
+ * SFSpeechAudioBufferRecognitionRequest.append(_:) 本身是线程安全的。
+ *
+ * @author xiangwei
+ */
+private final class RecognitionRequestBox: @unchecked Sendable {
+    let request: SFSpeechAudioBufferRecognitionRequest
+
+    init(_ request: SFSpeechAudioBufferRecognitionRequest) {
+        self.request = request
+    }
+}
+
+/**
+ * 识别结果事件。
+ *
+ * 将非 Sendable 的 SFSpeechRecognitionResult / Error 转换为 Sendable 数据，
+ * 以便从 nonisolated 回调安全传递到 @MainActor 处理。
+ *
+ * @author xiangwei
+ */
+private enum RecognitionEvent: Sendable {
+    /// 识别到文本
+    case result(text: String, isFinal: Bool)
+    /// 识别出错
+    case error(message: String, code: Int)
+}
+
+/**
  * 语音输入管理器。
  *
  * 基于 SFSpeechRecognizer + AVAudioEngine 实现实时语音转写，
@@ -60,15 +91,16 @@ final class VoiceInputManager {
     /**
      * 请求语音识别授权（首次调用会弹出系统授权框）。
      *
-     * 方法声明为 nonisolated：continuation 不关联 MainActor，
-     * 授权回调（TCC 后台线程）可直接 resume，不会触发 iOS 26 的隔离断言崩溃。
+     * 方法声明为 nonisolated：continuation 不关联 MainActor。
+     * 授权回调在 TCC 后台线程执行，closure 标记为 @Sendable，
+     * 避免 Swift 6 将其推断到 MainActor 而在后台触发隔离断言崩溃。
      *
      * @return 授权状态
      * @author xiangwei
      */
     nonisolated func requestAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
         await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
+            SFSpeechRecognizer.requestAuthorization { @Sendable status in
                 continuation.resume(returning: status)
             }
         }
@@ -126,12 +158,15 @@ final class VoiceInputManager {
         request.shouldReportPartialResults = true
         recognitionRequest = request
 
-        // 识别任务：回调在后台线程，切回主线程更新状态
-        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            Task { @MainActor [weak self] in
-                self?.handleRecognitionResult(result, error: error)
+        // 识别任务：回调在后台线程，通过 nonisolated 静态工厂生成闭包，
+        // 避免在 @MainActor 上下文中形成闭包而被 Swift 6 推断到主线程，
+        // 导致回调在实时音频线程触发 executor 断言崩溃。
+        recognitionTask = recognizer.recognitionTask(
+            with: request,
+            resultHandler: Self.makeRecognitionHandler { [weak self] event in
+                self?.handleRecognitionEvent(event)
             }
-        }
+        )
 
         // 启动录音引擎，将音频缓冲实时喂给识别请求
         let engine = AVAudioEngine()
@@ -147,10 +182,10 @@ final class VoiceInputManager {
         } else {
             throw VoiceInputError.audioEngineUnavailable
         }
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: tapFormat) { buffer, _ in
-            // 音频线程回调：追加缓冲（SFSpeechAudioBufferRecognitionRequest.append 线程安全）
-            request.append(buffer)
-        }
+        inputNode.installTap(
+            onBus: 0, bufferSize: 1024, format: tapFormat,
+            block: Self.makeTapBlock(appending: RecognitionRequestBox(request))
+        )
 
         engine.prepare()
         do {
@@ -201,6 +236,9 @@ final class VoiceInputManager {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "" }
 
+        // 如果用户关闭自动矫正，直接返回识别原文
+        guard settings.speechCorrectionEnabled else { return trimmed }
+
         isCorrecting = true
         defer { isCorrecting = false }
 
@@ -233,26 +271,77 @@ final class VoiceInputManager {
     }
 
     /**
-     * 处理识别任务回调（主线程）。
+     * 处理识别事件（主线程）。
      *
+     * @param event 识别结果或错误事件
      * @author xiangwei
      */
-    private func handleRecognitionResult(_ result: SFSpeechRecognitionResult?, error: Error?) {
-        if let result {
-            continuation?.yield(result.bestTranscription.formattedString)
-            if result.isFinal {
+    private func handleRecognitionEvent(_ event: RecognitionEvent) {
+        switch event {
+        case .result(let text, let isFinal):
+            continuation?.yield(text)
+            if isFinal {
                 continuation?.finish()
                 cleanup()
-                return
             }
-        }
-        if let error {
+        case .error(let message, let code):
             // 用户主动停止触发的取消不视为错误
-            if (error as NSError).code != SpeechRecognitionCancelledCode {
-                lastError = error.localizedDescription
+            if code != SpeechRecognitionCancelledCode {
+                lastError = message
             }
             continuation?.finish()
             cleanup()
+        }
+    }
+
+    /**
+     * 创建音频输入 tap 闭包。
+     *
+     * 闭包在 nonisolated 静态工厂中生成，不继承 @MainActor，
+     * 因此可在 RealtimeMessenger.mServiceQueue 实时音频线程安全执行。
+     *
+     * @param box 识别请求的线程安全包装
+     * @return 将缓冲追加到识别请求的 tap 闭包
+     * @author xiangwei
+     */
+    private nonisolated static func makeTapBlock(
+        appending box: RecognitionRequestBox
+    ) -> (AVAudioPCMBuffer, AVAudioTime) -> Void {
+        { buffer, _ in box.request.append(buffer) }
+    }
+
+    /**
+     * 创建识别结果回调闭包。
+     *
+     * 闭包在 nonisolated 静态工厂中生成，不继承 @MainActor，
+     * 内部提取 Sendable 数据后通过 Task { @MainActor in } 派发到主线程。
+     *
+     * @param handleEvent 在主线程处理识别事件的回调
+     * @return 适配 recognitionTask 的结果回调闭包
+     * @author xiangwei
+     */
+    private nonisolated static func makeRecognitionHandler(
+        handleEvent: @escaping @MainActor (RecognitionEvent) -> Void
+    ) -> (SFSpeechRecognitionResult?, Error?) -> Void {
+        { result, error in
+            if let result {
+                let event = RecognitionEvent.result(
+                    text: result.bestTranscription.formattedString,
+                    isFinal: result.isFinal
+                )
+                Task { @MainActor in
+                    handleEvent(event)
+                }
+            } else if let error {
+                let nsError = error as NSError
+                let event = RecognitionEvent.error(
+                    message: error.localizedDescription,
+                    code: nsError.code
+                )
+                Task { @MainActor in
+                    handleEvent(event)
+                }
+            }
         }
     }
 
@@ -293,9 +382,9 @@ enum VoiceInputError: LocalizedError {
         case .unavailable:
             return "当前设备不支持语音识别，请改用文字输入。"
         case .speechPermissionDenied:
-            return "请在系统设置中允许「笔笔」使用语音识别。"
+            return "请在系统设置中允许「星枢」使用语音识别。"
         case .microphonePermissionDenied:
-            return "请在系统设置中允许「笔笔」访问麦克风。"
+            return "请在系统设置中允许「星枢」访问麦克风。"
         case .audioEngineUnavailable:
             return "录音引擎暂时不可用，请稍后重试。"
         }

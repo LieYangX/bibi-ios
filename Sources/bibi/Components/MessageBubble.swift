@@ -3,7 +3,8 @@ import SwiftUI
 /**
  * 对话消息视图。
  *
- * 用户与助手消息均使用内容卡片样式，通过暖灰/冷灰背景区分身份。
+ * 用户与助手消息共享统一的圆角与间距系统，通过背景色、对齐方向与聊天气泡的
+ * "尾端"锐角来区分身份：用户位于右侧、暖灰底；助手位于左侧、冷灰底。
  *
  * @author xiangwei
  */
@@ -20,8 +21,8 @@ struct MessageBubble: View {
         self.message = message
         self.isLastInRun = isLastInRun
         self.onCopy = onCopy
-        // 流式输出期间默认展开思考过程；输出完成或历史消息默认折叠
-        _isReasoningExpanded = State(initialValue: message.isStreaming)
+        // 思考过程默认折叠，用户可点击标题栏手动展开
+        _isReasoningExpanded = State(initialValue: false)
     }
 
     var body: some View {
@@ -81,29 +82,47 @@ struct MessageBubble: View {
             && (message.reasoningContent?.isEmpty ?? true)
     }
 
-    private var userMessage: some View {
-        HStack(alignment: .top) {
-            Spacer(minLength: 72)
+    /// 用户消息气泡形状（右侧尾端收尖）。
+    private var userBubbleShape: some Shape {
+        UnevenRoundedRectangle(
+            cornerRadii: .init(topLeading: 16, bottomLeading: 16, bottomTrailing: 6, topTrailing: 16),
+            style: .continuous
+        )
+    }
 
-            Text(renderedText)
-                .font(.bibiBody)
-                .foregroundStyle(Color.userBubbleText)
-                .lineSpacing(3)
-                .textSelection(.enabled)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .frame(maxWidth: 330, alignment: .leading)
-                .background(
-                    Color.userBubbleBackground,
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(Color.hairline.opacity(0.65), lineWidth: 0.5)
-                }
-                .contextMenu {
-                    copyButton
-                }
+    /// 助手消息气泡形状（左侧尾端收尖）。
+    private var assistantBubbleShape: some Shape {
+        UnevenRoundedRectangle(
+            cornerRadii: .init(topLeading: 16, bottomLeading: 6, bottomTrailing: 16, topTrailing: 16),
+            style: .continuous
+        )
+    }
+
+    private var userMessage: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            HStack(alignment: .top, spacing: 0) {
+                Spacer(minLength: 72)
+
+                let shape = userBubbleShape
+
+                Text(renderedText)
+                    .font(.bibiBody)
+                    .foregroundStyle(Color.userBubbleText)
+                    .lineSpacing(3)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: 330, alignment: .leading)
+                    .background(Color.userBubbleBackground, in: shape)
+                    .overlay(shape.stroke(Color.hairline.opacity(0.65), lineWidth: 0.5))
+                    .contextMenu {
+                        copyButton
+                    }
+            }
+
+            Text(timeText)
+                .font(.bibiCaption2)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(.horizontal, 16)
@@ -111,42 +130,44 @@ struct MessageBubble: View {
     }
 
     private var assistantMessage: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 8) {
-                if let reasoning = trimmedReasoning, !reasoning.isEmpty {
-                    if isReasoningExpanded {
-                        reasoningSection(reasoning)
-                    } else {
-                        reasoningCollapsedBar(reasoning)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 0) {
+                let shape = assistantBubbleShape
+
+                VStack(alignment: .leading, spacing: 8) {
+                    if let reasoning = trimmedReasoning, !reasoning.isEmpty {
+                        if isReasoningExpanded {
+                            reasoningSection(reasoning)
+                        } else {
+                            reasoningCollapsedBar(reasoning)
+                        }
+                    }
+
+                    if !message.text.isEmpty {
+                        Text(renderedText)
+                            .font(.bibiBody)
+                            .foregroundStyle(.primary)
+                            .lineSpacing(4)
+                            .textSelection(.enabled)
+                    } else if isEmptyAssistant {
+                        thinkingIndicator
                     }
                 }
-
-                if !message.text.isEmpty {
-                    Text(renderedText)
-                        .font(.bibiAssistant)
-                        .foregroundStyle(.primary)
-                        .lineSpacing(4)
-                        .textSelection(.enabled)
-                } else if isEmptyAssistant {
-                    thinkingIndicator
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .frame(maxWidth: 560, alignment: .leading)
+                .background(Color.assistantBubbleBackground, in: shape)
+                .overlay(shape.stroke(Color.hairline.opacity(0.65), lineWidth: 0.5))
+                .contextMenu {
+                    copyButton
                 }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(maxWidth: 560, alignment: .leading)
-            .background(
-                Color.assistantBubbleBackground,
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.hairline.opacity(0.65), lineWidth: 0.5)
-            }
-            .contextMenu {
-                copyButton
+
+                Spacer(minLength: 24)
             }
 
-            Spacer(minLength: 24)
+            Text(timeText)
+                .font(.bibiCaption2)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
@@ -323,6 +344,11 @@ struct MessageBubble: View {
 
     private var renderedText: AttributedString {
         (try? AttributedString(markdown: message.text)) ?? AttributedString(message.text)
+    }
+
+    /// 消息时间（当天显示 HH:mm，非当天显示 yyyy年M月d日）。
+    private var timeText: String {
+        AppFormatters.messageTime(message.timestamp)
     }
 
     private var copyButton: some View {

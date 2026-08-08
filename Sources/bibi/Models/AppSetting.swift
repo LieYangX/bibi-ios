@@ -27,4 +27,5 @@ enum SettingKey: String {
     case conversationWindowSize = "conversation_window_size"
     case proactiveEnabled = "proactive_enabled"; case proactiveIntervalMinutes = "proactive_interval_minutes"
     case lastProactiveAt = "last_proactive_at"
+    case speechCorrectionEnabled = "speech_correction_enabled"
 }
