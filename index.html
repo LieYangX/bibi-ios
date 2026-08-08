@@ -239,6 +239,9 @@ footer .foot-brand{
 footer a{color:var(--ink-dim);text-decoration:none;border-bottom:1px dotted rgba(90,100,120,.4);transition:color .25s}
 footer a:hover{color:var(--r-6)}
 
+/* ── 图标 ─────────────────────────── */
+.feat-ico svg{width:22px;height:22px}
+
 /* ── 入场动画 ─────────────────────── */
 .reveal{opacity:0;transform:translateY(26px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1)}
 .reveal.in{opacity:1;transform:none}
@@ -247,6 +250,27 @@ footer a:hover{color:var(--r-6)}
 .hero .reveal:nth-child(3){transition-delay:.25s}
 .hero .reveal:nth-child(4){transition-delay:.35s}
 .hero .reveal:nth-child(5){transition-delay:.5s}
+
+/* ── 手机端优化 ───────────────────── */
+@media(max-width:640px){
+  .wrap{padding:0 20px}
+  .nav-links a:not(.nav-gh){display:none}
+  .hero{padding:60px 0 52px}
+  .hero-grid{gap:40px}
+  .hero h1{font-size:clamp(30px,9vw,40px)}
+  .hero-cta .btn{flex:1;text-align:center;padding:13px 16px}
+  .phone-frame{width:min(240px,70vw)}
+  .section{padding:58px 0}
+  .sec-head{margin-bottom:38px}
+  .sec-head h2{font-size:clamp(24px,7vw,30px)}
+  .features{gap:14px}
+  .feat{padding:24px 20px}
+  .shots{gap:14px}
+  .arch{padding:30px 20px}
+  .arch-grid{gap:18px}
+  .arch-side{padding:20px 18px}
+  footer{padding:36px 0}
+}
 </style>
 </head>
 <body>
@@ -296,12 +320,12 @@ footer a:hover{color:var(--r-6)}
       <p>不只是记账工具，是守在身边的数字管家</p>
     </div>
     <div class="features">
-      <div class="feat reveal"><div class="feat-ico">✦</div><h3>AI 对话</h3><p>DeepSeek 驱动，SSE 流式回复与多轮 function calling 自实现。「昨天咖啡花了多少」——它边想边查边答。</p></div>
-      <div class="feat reveal"><div class="feat-ico">✧</div><h3>电脑联动</h3><p>Bonjour 自动发现局域网内的电脑端，配对后记账工具直接注入智能体，手机也能查流水、出报表。</p></div>
-      <div class="feat reveal"><div class="feat-ico">≋</div><h3>本地工具</h3><p>时间、定位、联系人、日历、健康、待办与定时任务——系统能力按需授权，全部原生调用。</p></div>
-      <div class="feat reveal"><div class="feat-ico">◌</div><h3>语音输入</h3><p>说一句「记一笔打车 35 块」，系统语音识别实时转写，省去打字。</p></div>
-      <div class="feat reveal"><div class="feat-ico">◈</div><h3>智能记忆</h3><p>灵魂设定、用户画像与长期记忆三类记忆库，「记住我每个月一号发工资」——它真的会记住。</p></div>
-      <div class="feat reveal"><div class="feat-ico">✉</div><h3>主动提醒</h3><p>定时任务到期、该记账了，智能体会主动开口；多本地用户各自独立，互不打扰。</p></div>
+      <div class="feat reveal"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-2.9-.4-4.1-1L3 20l1-5.4A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 6.8l.9 2.2 2.2.9-2.2.9-.9 2.2-.9-2.2-2.2-.9 2.2-.9z"/></svg></div><h3>AI 对话</h3><p>DeepSeek 驱动，SSE 流式回复与多轮 function calling 自实现。「昨天咖啡花了多少」——它边想边查边答。</p></div>
+      <div class="feat reveal"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="12" height="8.5" rx="1.5"/><path d="M8.5 19.5h3.5M10.25 19.5V17"/><rect x="15.5" y="10" width="6" height="10" rx="1.5"/><path d="M18.5 16.5v.01"/></svg></div><h3>电脑联动</h3><p>Bonjour 自动发现局域网内的电脑端，配对后记账工具直接注入智能体，手机也能查流水、出报表。</p></div>
+      <div class="feat reveal"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.1M12 19.1v2.1M21.2 12h-2.1M4.9 12H2.8M18.2 5.8l-1.5 1.5M7.3 16.7l-1.5 1.5M18.2 18.2l-1.5-1.5M7.3 7.3 5.8 5.8"/></svg></div><h3>本地工具</h3><p>时间、定位、联系人、日历、健康、待办与定时任务——系统能力按需授权，全部原生调用。</p></div>
+      <div class="feat reveal"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><path d="M12 18v2.5"/></svg></div><h3>语音输入</h3><p>说一句「记一笔打车 35 块」，系统语音识别实时转写，省去打字。</p></div>
+      <div class="feat reveal"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16.4l-5.2 3 1.2-5.8-4.4-4 5.9-.7z"/></svg></div><h3>智能记忆</h3><p>灵魂设定、用户画像与长期记忆三类记忆库，「记住我每个月一号发工资」——它真的会记住。</p></div>
+      <div class="feat reveal"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13.5 6 9.5z"/><path d="M10 18.5a2 2 0 0 0 4 0"/></svg></div><h3>主动提醒</h3><p>定时任务到期、该记账了，智能体会主动开口；多本地用户各自独立，互不打扰。</p></div>
     </div>
   </div>
 </section>
