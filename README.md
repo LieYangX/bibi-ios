@@ -1,5 +1,7 @@
 # 星枢 iOS（bibi-ios）
 
+> **官网**：[lieyangx.github.io/bibi-ios](https://lieyangx.github.io/bibi-ios/) ｜ **仓库**：[github.com/LieYangX/bibi-ios](https://github.com/LieYangX/bibi-ios)
+
 星枢（bibi-ios）是笔笔（bibi）的 iOS 端——AI 记账助手。SwiftUI 原生实现（iOS 26，Liquid Glass 设计语言），LLM 对话、流式解析与 function calling 全部自实现，可通过局域网连接电脑端笔笔（bibi）解锁记账工具。
 
 ## 功能特性
